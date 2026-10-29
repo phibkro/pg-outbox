@@ -1,0 +1,8 @@
+{
+  "covers": [
+    "packages/core/src/operations.ts",
+    "packages/core/src/schema.ts",
+    "packages/core/src/sql.ts"
+  ],
+  "digest": "72aaa902e9c29879a1a6c5fb9c226f1aaebb7749099d4206fddea8269eb027e1"
+}

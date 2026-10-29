@@ -1,0 +1,99 @@
+{
+  "description": "Every TLC run of model/ClaimFence.tla. `current-code` holds with every rule on. A `broken` case turns one rule off and must violate exactly the invariant it names; its `control` is the id of the conformance control (packages/conformance) that makes the same defect in SQL. A `reach` case checks the negation of something the model must be able to do and must find a counterexample: a pass of current-code over a model that cannot do these would mean nothing. `notModelled` lists the operations of the core that are not claim-protocol actions, with the reason.",
+  "constants": {
+    "Workers": "{w1, w2}",
+    "MaxTime": 4,
+    "Lease": 2,
+    "Delay": 1,
+    "MaxAttempts": 2,
+    "MaxClaims": 3
+  },
+  "rules": {
+    "Fence": true,
+    "LiveCheck": true,
+    "MarkAtClaim": false,
+    "ClassRule": true,
+    "HoldLocks": true,
+    "LeaseLapses": true
+  },
+  "invariants": [
+    "TypeOK",
+    "AtMostOneLiveLease",
+    "NoStaleSettle",
+    "HoldExcludesClaims",
+    "DeliveredWasHeard",
+    "DeadNeedsClass",
+    "ReleaseEndsAfterAttempts",
+    "LeaseIsFinite"
+  ],
+  "cases": [
+    { "id": "current-code", "kind": "holds" },
+    {
+      "id": "no-fence",
+      "kind": "broken",
+      "rules": { "Fence": false },
+      "violates": "NoStaleSettle",
+      "control": ["ack-no-token", "release-no-token", "bury-no-token"]
+    },
+    {
+      "id": "no-live-check",
+      "kind": "broken",
+      "rules": { "LiveCheck": false },
+      "violates": "AtMostOneLiveLease",
+      "control": ["claimById-no-live-check", "claimBatch-no-live-check"]
+    },
+    {
+      "id": "mark-at-claim",
+      "kind": "broken",
+      "rules": { "MarkAtClaim": true },
+      "violates": "DeliveredWasHeard",
+      "control": ["mark-at-claim"]
+    },
+    {
+      "id": "no-class-rule",
+      "kind": "broken",
+      "rules": { "ClassRule": false },
+      "violates": "DeadNeedsClass",
+      "control": ["release-no-class-rule"]
+    },
+    {
+      "id": "hold-locks-nothing",
+      "kind": "broken",
+      "rules": { "HoldLocks": false },
+      "violates": "HoldExcludesClaims",
+      "control": ["hold-locks-nothing"]
+    },
+    {
+      "id": "no-lease",
+      "kind": "broken",
+      "rules": { "LeaseLapses": false },
+      "violates": "LeaseIsFinite",
+      "control": ["no-lease"]
+    },
+    { "id": "reach-claim-lost", "kind": "reach", "violates": "NeverClaimLost" },
+    { "id": "reach-held", "kind": "reach", "violates": "NeverHeld" },
+    { "id": "reach-hold-wait", "kind": "reach", "violates": "NeverHoldWait" },
+    { "id": "reach-delivered", "kind": "reach", "violates": "NeverDelivered" },
+    { "id": "reach-dead", "kind": "reach", "violates": "NeverDead" },
+    { "id": "reach-reclaimed", "kind": "reach", "violates": "NeverReclaimed" },
+    {
+      "id": "reach-dead-by-release",
+      "kind": "reach",
+      "violates": "NeverDeadByRelease"
+    },
+    {
+      "id": "reach-heard-twice",
+      "kind": "reach",
+      "violates": "NeverTwiceHeard"
+    }
+  ],
+  "notModelled": {
+    "enqueue": "writes a row; the model starts from the pending row. Atomicity with the caller's writes is falsifier F1 (SQL), not a protocol property",
+    "classify": "a read that explains a miss; it changes nothing",
+    "markQueued": "a receipt column; no claim-protocol state reads it",
+    "stale": "a read; no claim-protocol state changes",
+    "counts": "a read",
+    "open": "a read",
+    "cleanup": "deletes terminal rows only; the model's rows are never deleted"
+  }
+}

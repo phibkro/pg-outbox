@@ -2,20 +2,12 @@ import { globSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 import { describe, expect, test } from "vite-plus/test";
-import { z } from "zod";
 
+import { Manifest } from "./manifest.ts";
 import { repoRoot, withScratch, writeFixture } from "./scriptHarness.ts";
 
 // AGENTS.md, "Stack": the core does not depend on Effect; only the Effect adapter package may.
 const effectAdapter = "packages/effect";
-
-const Manifest = z.object({
-  dependencies: z.record(z.string(), z.string()).default({}),
-  devDependencies: z.record(z.string(), z.string()).default({}),
-  name: z.string(),
-  optionalDependencies: z.record(z.string(), z.string()).default({}),
-  peerDependencies: z.record(z.string(), z.string()).default({}),
-});
 
 const isEffectPackage = (name: string): boolean =>
   name === "effect" || name.startsWith("@effect/");
@@ -276,6 +268,85 @@ describe("no package has a second copy of a pooler fact", () => {
     expect(found).toStrictEqual([
       "packages/core/src/a.ts",
       `${effectAdapter}/src/b.ts`,
+    ]);
+  });
+});
+
+// Spec 0001: the core has no driver and no Effect. It may depend on `@pg-txmode/core` (the catalogue and the connection
+// mode) and on `zod` (the decoding of result rows), and imports nothing else outside itself.
+const allowed = new Set(["@pg-txmode/core", "zod"]);
+
+const runtimeFields = [
+  "dependencies",
+  "optionalDependencies",
+  "peerDependencies",
+] as const;
+
+/** Runtime dependencies of the core manifest that are not allowed. */
+const manifestViolations = (root: string): readonly string[] => {
+  const manifest = Manifest.parse(
+    JSON.parse(
+      readFileSync(path.join(root, "packages/core/package.json"), "utf-8")
+    )
+  );
+
+  return runtimeFields.flatMap((field) =>
+    Object.keys(manifest[field]).flatMap((name) =>
+      allowed.has(name)
+        ? []
+        : [`packages/core/package.json: ${field} lists ${name}`]
+    )
+  );
+};
+
+/** A module specifier of an import, an export-from or a dynamic import. */
+const specifier = /(?:from|import)\s*\(?\s*["'](?<name>[^"']+)["']/gu;
+
+/** Specifiers of the core's sources that are neither relative nor allowed. */
+const importViolations = (root: string): readonly string[] =>
+  globSync("packages/core/src/**/*.ts", { cwd: root }).flatMap((file) =>
+    [
+      ...readFileSync(path.join(root, file), "utf-8").matchAll(specifier),
+    ].flatMap((match) => {
+      const name = match.groups?.name ?? "";
+
+      return name.startsWith(".") || allowed.has(name)
+        ? []
+        : [`${file}: imports ${name}`];
+    })
+  );
+
+describe("the core has no driver and no Effect", () => {
+  test("its runtime dependencies are @pg-txmode/core and zod, and its sources import nothing else", () => {
+    expect(manifestViolations(repoRoot)).toStrictEqual([]);
+    expect(importViolations(repoRoot)).toStrictEqual([]);
+  });
+
+  test("control: a driver or an Effect package in the manifest, and an import of one, are found", () => {
+    const found = withScratch((root) => {
+      writeFixture(
+        path.join(root, "packages/core/package.json"),
+        JSON.stringify({
+          dependencies: {
+            "@pg-txmode/core": "workspace:*",
+            effect: "4.1.0",
+            pg: "8.23.1",
+          },
+        })
+      );
+      writeFixture(
+        path.join(root, "packages/core/src/a.ts"),
+        'import { Pool } from "pg";\nimport { x } from "./b.ts";\nimport { z } from "zod";\nconst sql = await import("postgres");\n'
+      );
+
+      return [...manifestViolations(root), ...importViolations(root)];
+    });
+
+    expect(found).toStrictEqual([
+      "packages/core/package.json: dependencies lists effect",
+      "packages/core/package.json: dependencies lists pg",
+      "packages/core/src/a.ts: imports pg",
+      "packages/core/src/a.ts: imports postgres",
     ]);
   });
 });
