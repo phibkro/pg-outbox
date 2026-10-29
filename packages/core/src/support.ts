@@ -1,7 +1,7 @@
 import { capabilities, cellOf, describeMode, rowById } from "@pg-txmode/core";
 import type { ConnectionMode, RowId, Support } from "@pg-txmode/core";
 
-import { operationById } from "./operations.ts";
+import { isOperationId, operationById } from "./operations.ts";
 import type { OperationId } from "./operations.ts";
 
 /**
@@ -55,18 +55,34 @@ export const capCachedRead = (
     ? "unverified"
     : support;
 
-/** What the mode lets an operation do: the weakest cell of its catalogue rows, capped for a read behind a cache. */
+const weaker = (a: Support, b: Support): Support =>
+  rank[a] <= rank[b] ? a : b;
+
+/**
+ * What the mode lets an operation do: the weakest cell of its catalogue rows, capped for a read behind a cache, and no
+ * stronger than any operation it may run after itself (`claimById` can run `classify`, a read).
+ */
 export const operationSupport = (
   mode: ConnectionMode,
   id: OperationId
 ): Support => {
   const operation = operationById(id);
 
-  return capCachedRead(
+  let support = capCachedRead(
     rowSupport(mode, operation.rows),
     operation.reads,
     capabilities(mode).cachesReads
   );
+
+  for (const follower of operation.follows ?? []) {
+    if (!isOperationId(follower)) {
+      throw new Error(`${id} follows ${follower}, which is not an operation`);
+    }
+
+    support = weaker(support, operationSupport(mode, follower));
+  }
+
+  return support;
 };
 
 /** The mode cannot honour the operation, or the catalogue has not verified it there. The message quotes the catalogue. */
@@ -77,7 +93,17 @@ export class UnsupportedOperationError extends Error {
   readonly rows: readonly RowId[];
 
   constructor(mode: ConnectionMode, id: OperationId, support: Support) {
-    const { rows } = operationById(id);
+    const operation = operationById(id);
+
+    // The rows the answer rests on: the operation's own and those of the operations it may run after itself.
+    const rows = [
+      ...new Set([
+        ...operation.rows,
+        ...(operation.follows ?? []).flatMap(
+          (follower) => operationById(follower).rows
+        ),
+      ]),
+    ];
 
     const cells = rows
       .map((row) => {
@@ -87,8 +113,13 @@ export class UnsupportedOperationError extends Error {
       })
       .join("; ");
 
+    const after =
+      (operation.follows ?? []).length === 0
+        ? ""
+        : `; it may run ${(operation.follows ?? []).join(", ")} after itself`;
+
     super(
-      `${id} is ${support === "no" ? "not available" : "unverified"} on a ${describeMode(mode)} connection; catalogue ${cells}`
+      `${id} is ${support === "no" ? "not available" : "unverified"} on a ${describeMode(mode)} connection${after}; catalogue ${cells}`
     );
     this.operation = id;
     this.support = support;

@@ -60,6 +60,9 @@ export default defineConfig({
     ],
     rules: {
       "complexity/complexity": ["error", { cognitive: 15 }],
+      // `typescript/promise-function-async` (on) makes a function that returns a promise async, and `require-await` then
+      // rejects it for having no await. One of the two has to give; the typed one stays (as in pg-txmode's vite.config.ts).
+      "eslint/require-await": "off",
       "no-restricted-imports": [
         "error",
         { patterns: [...restrictedSourcePatterns] },

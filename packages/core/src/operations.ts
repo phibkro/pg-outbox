@@ -9,7 +9,8 @@
  * - `standalone`: must not run in a caller's transaction. A claim inside an open transaction is invisible to every other
  *   claimer until it ends, and it keeps its row lock while the worker sends.
  *
- * `rows` are the pg-txmode catalogue rows the operation rests on; `reads` says that Hyperdrive's read cache applies to it.
+ * `rows` are the pg-txmode catalogue rows the operation rests on; `reads` says that Hyperdrive's read cache applies to it;
+ * `follows` names the operations it can run after itself, whose support limits its own.
  */
 import type { RowId } from "@pg-txmode/core";
 
@@ -20,6 +21,8 @@ export interface OperationInfo {
   readonly transaction: TransactionMode;
   readonly rows: readonly RowId[];
   readonly reads: boolean;
+  /** Operations that this one may run after it (a claim by id that matched nothing asks `classify` why). */
+  readonly follows?: readonly string[];
   /** What the operation does, in one line (the documentation is generated from this). */
   readonly summary: string;
 }
@@ -37,6 +40,7 @@ export const operations = defineOperations([
     transaction: "requires",
   },
   {
+    follows: ["classify"],
     id: "claimById",
     reads: false,
     rows: ["outbox-lease"],
@@ -130,7 +134,7 @@ export const operationIds: readonly OperationId[] = operations.map(
   (operation) => operation.id
 );
 
-export const operationById = (id: OperationId): OperationInfo => {
+export const operationById = (id: string): OperationInfo => {
   const found = operations.find((operation) => operation.id === id);
 
   if (found === undefined) {
@@ -139,3 +143,7 @@ export const operationById = (id: OperationId): OperationInfo => {
 
   return found;
 };
+
+/** Whether `id` names an operation: for the strings of data (`follows`) and of a caller's list. */
+export const isOperationId = (id: string): id is OperationId =>
+  operationIds.some((known) => known === id);

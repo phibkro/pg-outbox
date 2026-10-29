@@ -350,3 +350,52 @@ describe("the core has no driver and no Effect", () => {
     ]);
   });
 });
+
+/**
+ * An adapter runs the core's statements and adds no SQL of its own (spec 0002): one source per statement. A statement
+ * keyword that opens a command, in a string or a template of an adapter's sources, is found.
+ */
+const adapters = ["packages/pg", "packages/effect"];
+
+const sqlCommand =
+  /["'`]\s*(?:SELECT\b|INSERT\s+INTO\b|UPDATE\s+["\w]+\s+SET\b|DELETE\s+FROM\b|WITH\s+\w+\s+AS\b|BEGIN\b|COMMIT\b|ROLLBACK\b)/u;
+
+const sqlInAdapters = (root: string): readonly string[] =>
+  adapters.flatMap((adapter) =>
+    sourceFiles(root, `${adapter}/src/**/*.ts`).filter((file) =>
+      sqlCommand.test(readFileSync(path.join(root, file), "utf-8"))
+    )
+  );
+
+describe("an adapter adds no SQL", () => {
+  test("no source of an adapter holds a statement", () => {
+    expect(sqlInAdapters(repoRoot)).toStrictEqual([]);
+  });
+
+  test("control: a SELECT, an UPDATE, an INSERT, a transaction command and a CTE in a string are found; a word in prose is not", () => {
+    const found = withScratch((root) => {
+      const files = [
+        'export const a = "SELECT 1";\n',
+        "export const b = `UPDATE outbox SET x = 1`;\n",
+        'export const c = "INSERT INTO t VALUES (1)";\n',
+        'export const d = "BEGIN";\n',
+        'export const e = "WITH due AS (SELECT 1) SELECT 1";\n',
+        '// we select and update rows in the core\nexport const f = "the update of the row";\n',
+      ];
+
+      for (const [index, source] of files.entries()) {
+        writeFixture(path.join(root, `packages/pg/src/f${index}.ts`), source);
+      }
+
+      return [...sqlInAdapters(root)].toSorted();
+    });
+
+    expect(found).toStrictEqual([
+      "packages/pg/src/f0.ts",
+      "packages/pg/src/f1.ts",
+      "packages/pg/src/f2.ts",
+      "packages/pg/src/f3.ts",
+      "packages/pg/src/f4.ts",
+    ]);
+  });
+});

@@ -1,5 +1,7 @@
 import type {
   AckResult,
+  BuilderArgs,
+  BuilderName,
   BuryResult,
   ClaimResult,
   Claimed,
@@ -30,21 +32,11 @@ export type ErrorClass = "rejected" | "timeout" | "undecodable";
 export type SuiteOutbox = Outbox<Kind, ErrorClass>;
 
 /** The arguments of a builder of the declared outbox: a subject takes the same arguments, in promises. */
-type Builder =
-  | "ack"
-  | "bury"
-  | "claimBatch"
-  | "claimById"
-  | "cleanup"
-  | "counts"
-  | "enqueue"
-  | "holdClaim"
-  | "markQueued"
-  | "open"
-  | "release"
-  | "stale";
-
-type ArgsOf<Operation extends Builder> = Parameters<SuiteOutbox[Operation]>[0];
+type ArgsOf<Operation extends BuilderName> = BuilderArgs<
+  Kind,
+  ErrorClass,
+  Operation
+>;
 
 /**
  * The protocol as one client exposes it, in promises: the core's statements behind the core's own loop

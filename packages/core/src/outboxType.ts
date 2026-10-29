@@ -92,3 +92,25 @@ export interface Outbox<
     readonly now: Now;
   }) => Statement<number>;
 }
+
+/** The operations that have a statement builder on `Outbox`. */
+export type BuilderName =
+  | "ack"
+  | "bury"
+  | "claimBatch"
+  | "claimById"
+  | "cleanup"
+  | "counts"
+  | "enqueue"
+  | "holdClaim"
+  | "markQueued"
+  | "open"
+  | "release"
+  | "stale";
+
+/** The argument of one builder of an `Outbox`: what a subject, an adapter or a test passes for that operation. */
+export type BuilderArgs<
+  Kind extends string,
+  ErrorClass extends string,
+  Operation extends BuilderName,
+> = Parameters<Outbox<Kind, ErrorClass>[Operation]>[0];

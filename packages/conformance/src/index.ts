@@ -1,14 +1,23 @@
 export {
   defineConformance,
+  defineSubjectConformance,
   falsifiers,
   roundsFromEnvironment,
 } from "./suite.ts";
 
 export type { Target } from "./suite.ts";
 
-export { coreSubject } from "./coreSubject.ts";
+export { bizTable, coreSubject } from "./coreSubject.ts";
 
-export type { CoreSubject } from "./coreSubject.ts";
+export {
+  mutatedMigration,
+  mutatedTexts,
+  rewriteSent,
+  runsOnOwnConnection,
+  sentTexts,
+} from "./mutated.ts";
+
+export type { Built } from "./mutated.ts";
 
 export type { Env, Falsifier } from "./falsifier.ts";
 

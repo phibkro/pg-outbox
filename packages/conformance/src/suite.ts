@@ -12,6 +12,7 @@ import type { Env, Falsifier } from "./falsifier.ts";
 import { suiteOutbox } from "./fixtures.ts";
 import { retention, sweep } from "./housekeeping.ts";
 import { modeCheck, noSessionFeatures } from "./modes.ts";
+import type { Built } from "./mutated.ts";
 import type { Mutation } from "./mutation.ts";
 import { closedSet, dedupe, failureClasses } from "./policy.ts";
 
@@ -39,19 +40,15 @@ export interface Target {
   readonly connect: Connect;
 }
 
-const envOf = (target: Target, rounds: number, mutation?: Mutation): Env => {
-  const core = coreSubject(suiteOutbox, target.connect, mutation);
-
-  return {
-    get log() {
-      return core.log;
-    },
-    migration: core.migration,
-    rounds,
-    subject: core.subject,
-    texts: core.texts,
-  };
-};
+const envOf = (built: Built, rounds: number): Env => ({
+  get log() {
+    return built.log;
+  },
+  migration: built.migration,
+  rounds,
+  subject: built.subject,
+  texts: built.texts,
+});
 
 /** What the falsifier throws against this environment, or undefined when it holds. */
 const failureOf = async (
@@ -79,20 +76,26 @@ export const roundsFromEnvironment = (): number => {
 };
 
 /**
- * Registers, for one target, a test per falsifier (it must hold) and a test per control (the same run against a deliberate
- * defect must fail). The core's own statements are what runs; adapters register their own subject in their own packages.
+ * Registers, for one subject, a test per falsifier (it must hold) and a test per control (the same run against a deliberate
+ * defect must fail). `build` makes a fresh subject, with the control's defect applied when there is one: the core's
+ * statements over a driver (`defineConformance`), or an adapter's functions (the adapters register their own in their
+ * own packages), so that every falsifier runs on every way to call the protocol.
  */
-export const defineConformance = (target: Target, rounds: number): void => {
-  describe(`conformance of the core on ${target.name}`, () => {
+export const defineSubjectConformance = (
+  name: string,
+  build: (mutation?: Mutation) => Built,
+  rounds: number
+): void => {
+  describe(`conformance of ${name}`, () => {
     for (const falsifier of falsifiers) {
       test(`${falsifier.id} holds: ${falsifier.title}`, async () => {
-        await falsifier.run(envOf(target, rounds));
+        await falsifier.run(envOf(build(), rounds));
       });
 
       for (const control of falsifier.controls) {
         test(`${falsifier.id} control ${control.id} fails: ${control.describe}`, async () => {
           // Built here, outside the expectation: a control that changes nothing is a defect of the suite, not a pass.
-          const env = envOf(target, rounds, control.mutation);
+          const env = envOf(build(control.mutation), rounds);
 
           const failure = await failureOf(falsifier, env);
 
@@ -113,10 +116,19 @@ export const defineConformance = (target: Target, rounds: number): void => {
             `control ${control.id} is malformed SQL: ${failure?.message}`
           ).toBe(false);
           process.stderr.write(
-            `control ${falsifier.id}/${control.id} on ${target.name}: ${(failure?.message ?? "").split("\n")[0]}\n`
+            `control ${falsifier.id}/${control.id} on ${name}: ${(failure?.message ?? "").split("\n")[0]}\n`
           );
         });
       }
     }
   });
+};
+
+/** The core's own statements over `target`, through `coreSubject`. */
+export const defineConformance = (target: Target, rounds: number): void => {
+  defineSubjectConformance(
+    `the core on ${target.name}`,
+    (mutation) => coreSubject(suiteOutbox, target.connect, mutation),
+    rounds
+  );
 };
