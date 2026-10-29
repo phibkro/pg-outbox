@@ -186,3 +186,24 @@ export const claimedRow = async (
 
   return { claim: await claimAt(subject, id), id };
 };
+
+/** The answer of `promise`, or a failure after `ms`: a defect that deadlocks is a failure in seconds, not a hang until the test's timeout. */
+export const within = async <T>(
+  ms: number,
+  promise: Promise<T>,
+  what: string
+): Promise<T> => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  const late = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => {
+      reject(new Error(`${what} did not finish in ${ms} ms (a deadlock?)`));
+    }, ms);
+  });
+
+  try {
+    return await Promise.race([promise, late]);
+  } finally {
+    clearTimeout(timer);
+  }
+};
