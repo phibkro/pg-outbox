@@ -1,8 +1,11 @@
 {
   "covers": [
+    "packages/core/src/decode.ts",
+    "packages/core/src/now.ts",
     "packages/core/src/operations.ts",
+    "packages/core/src/outbox.ts",
     "packages/core/src/schema.ts",
     "packages/core/src/sql.ts"
   ],
-  "digest": "f39e2eff79921c28c9056fc6b9fc0fb87fcde99b0676ef0d299d89b8ff26d156"
+  "digest": "2267daee52531cfafdb0e33682ef8454f54a1cd032e9f9fde5a0a13cf6c34633"
 }

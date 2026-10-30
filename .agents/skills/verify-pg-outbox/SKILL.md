@@ -47,7 +47,7 @@ devenv shell -- bun tools/model/run.ts --only no-fence   # one case; its trace i
 devenv shell -- bun tools/model/run.ts --digest          # the digest to record in model/confirmed.json
 ```
 
-One line per case: `ok` when TLC found what the case expects (`no error`, or `violates <invariant>`), with the number of states and, for a violation, the shortest trace as action names. `DRIFT` means `operations.ts`, `schema.ts` or `sql.ts` changed since `model/confirmed.json`: read `model/ClaimFence.tla` against the diff (each action names its operation with `@operation`), change the model where a statement changed, never weaken an invariant to make a run pass, and record the new digest. The TLC output, the configs and the traces stay in the directory the last line prints.
+One line per case: `ok` when TLC found what the case expects (`no error`, or `violates <invariant>`), with the number of states and, for a violation, the shortest trace as action names. `DRIFT` means `decode.ts`, `now.ts`, `operations.ts`, `outbox.ts`, `schema.ts` or `sql.ts` of the core changed since `model/confirmed.json`: read `model/ClaimFence.tla` against the diff (each action names its operation with `@operation`), change the model where a statement changed, never weaken an invariant to make a run pass, and record the new digest. The TLC output, the configs and the traces stay in the directory the last line prints.
 
 ## 5. Path table
 
@@ -56,10 +56,10 @@ One line per case: `ok` when TLC found what the case expects (`no error`, or `vi
 | `.agents/**`, `docs/**`, `*.md` only | nothing: these drive no code. Say so in the report |
 | `tools/quality/**` | the gate's negative control from `AGENTS.md` ("See it fail") for each gate that the diff touches |
 | `.github/**` | read CI's result on the head (`gh pr checks <n>`) |
-| `packages/core/src/**` | section 3 with 300 rounds; section 4 (the digest moves with `operations.ts`, `schema.ts`, `sql.ts`); the control of the changed statement by hand |
+| `packages/core/src/**` | section 3 with 300 rounds; section 4 (the digest moves with `decode.ts`, `now.ts`, `operations.ts`, `outbox.ts`, `schema.ts`, `sql.ts`); the control of the changed statement by hand |
 | `packages/conformance/**` | section 3; for a new or changed control, that it fails for its own defect (its stderr line) and not for malformed SQL |
 | `model/**`, `tools/model/**` | section 4, and each broken case of `cases.json` by hand (turn its rule back on in a scratch copy: the case must then find no error) |
-| `packages/pg/**` | `PG_OUTBOX_ROUNDS=300 devenv shell -- bash -c 'cd packages/pg && bunx vp test run'` (the suite through the adapter, direct and behind PgBouncer; 80 tests); the adapter must hold no statement (`tools/quality` fails otherwise) |
+| `packages/pg/**` | `PG_OUTBOX_ROUNDS=300 devenv shell -- bash -c 'cd packages/pg && bunx vp test run'` (the suite through the adapter, direct and behind PgBouncer: every test passes, and the 26 controls print their failure lines); the adapter must hold no statement (`tools/quality` fails otherwise) |
 | `packages/effect/**` | `devenv shell -- bun run check:effect` (exit 0, no output), and `PG_OUTBOX_ROUNDS=300 devenv shell -- bash -c 'cd packages/effect && bunx vp test run'` (the suite through the adapter, direct and behind PgBouncer, and the 8 Effect tests; 80 tests). By hand, each mutation of spec 0003 (E3 to E6 in its falsifier table): change `packages/effect/src/outbox.ts` as the table says and the named test must fail; and drop `InTransaction` from `enqueue`'s type in `EffectOutbox`: `check:effect` must fail at `outbox.test.ts`. No `async` function, no suppression directive in the package |
 | `vendor/**`, `.gitmodules` | `git submodule status` (the pinned commit), `bun install --frozen-lockfile` on a fresh clone with `--recurse-submodules`, then `ready` |
 | `devenv.nix`, `devenv.lock` | `devenv shell -- tlc -h` and `devenv shell -- bun run ready` |

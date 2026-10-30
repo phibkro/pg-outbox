@@ -37,8 +37,10 @@ export interface PgOutboxOptions<
    */
   readonly db: TxClient;
   /**
-   * The operations this process uses; every operation by default. A process that only enqueues on Hyperdrive says
-   * `["enqueue"]` and is not refused for the claim statements it never runs.
+   * The operations this process promises to use; every operation by default. It narrows **only the mode check made when the
+   * outbox is built**: an operation outside the list is not checked there, and the function for it is still returned and
+   * still works (calling one that the mode cannot honour is the caller's choice, not refused). A process that only enqueues
+   * on a mode that is unverified for the others says `["enqueue"]`; on Hyperdrive that still needs `allowUnverified`.
    */
   readonly operations?: readonly OperationId[];
   /** Accept an operation that the catalogue marks `unverified` for the mode (neither documented nor measured). Off by default. */
@@ -99,7 +101,7 @@ export interface PgOutbox<Kind extends string, ErrorClass extends string> {
   ) => Promise<BuryResult>;
   readonly holdClaim: (
     tx: Transaction,
-    args: Call<Kind, ErrorClass, "holdClaim">
+    args: WithoutClock<Kind, ErrorClass, "holdClaim">
   ) => Promise<HoldResult>;
   readonly markQueued: (
     args: Call<Kind, ErrorClass, "markQueued">
