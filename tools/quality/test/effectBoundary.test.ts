@@ -357,8 +357,25 @@ describe("the core has no driver and no Effect", () => {
  */
 const adapters = ["packages/pg", "packages/effect"];
 
-const sqlCommand =
-  /["'`]\s*(?:SELECT\b|INSERT\s+INTO\b|UPDATE\s+["\w]+\s+SET\b|DELETE\s+FROM\b|WITH\s+\w+\s+AS\b|BEGIN\b|COMMIT\b|ROLLBACK\b)/u;
+const comment = String.raw`(?:(?:\/\*[\s\S]*?\*\/|--[^\n]*\n)\s*)*`;
+
+const command = [
+  String.raw`SELECT\s+(?:\*|\d|DISTINCT\b|[\w".]+\s*(?:,|FROM\b|::|\(|AS\b))`,
+  String.raw`INSERT\s+INTO\b`,
+  String.raw`UPDATE\s+["\w]+\s+SET\b`,
+  String.raw`DELETE\s+FROM\b`,
+  String.raw`WITH\s+\w+\s+AS\b`,
+  String.raw`VALUES\s*\(`,
+  String.raw`(?:BEGIN|COMMIT|ROLLBACK|SAVEPOINT\s+\w+|RELEASE\s+SAVEPOINT\s+\w+)\b`,
+  String.raw`(?:LISTEN|UNLISTEN|NOTIFY)\s+\w+`,
+  String.raw`LOCK\s+TABLE\b`,
+  String.raw`SET\s+(?:LOCAL\s+|SESSION\s+)?\w+\s*(?:=|TO\b)`,
+  String.raw`(?:TRUNCATE|COPY)\s+\w+`,
+  String.raw`(?:CREATE|ALTER|DROP)\s+(?:TABLE|INDEX|UNIQUE|SCHEMA|FUNCTION)\b`,
+].join("|");
+
+/** Case-insensitive, after optional comments: the opening of a string or a template that is a statement. */
+const sqlCommand = new RegExp(`["'\`]\\s*${comment}(?:${command})`, "iu");
 
 const sqlInAdapters = (root: string): readonly string[] =>
   adapters.flatMap((adapter) =>
@@ -372,7 +389,7 @@ describe("an adapter adds no SQL", () => {
     expect(sqlInAdapters(repoRoot)).toStrictEqual([]);
   });
 
-  test("control: a SELECT, an UPDATE, an INSERT, a transaction command and a CTE in a string are found; a word in prose is not", () => {
+  test("control: statements in any case, after a comment, and the commands a pooler cares about are found; prose is not", () => {
     const found = withScratch((root) => {
       const files = [
         'export const a = "SELECT 1";\n',
@@ -380,7 +397,19 @@ describe("an adapter adds no SQL", () => {
         'export const c = "INSERT INTO t VALUES (1)";\n',
         'export const d = "BEGIN";\n',
         'export const e = "WITH due AS (SELECT 1) SELECT 1";\n',
-        '// we select and update rows in the core\nexport const f = "the update of the row";\n',
+        'export const f = "select 1";\n',
+        'export const g = "LOCK TABLE outbox IN SHARE MODE";\n',
+        'export const h = "LISTEN outbox_wake";\n',
+        'export const i = "SET LOCAL lock_timeout = 500";\n',
+        'export const j = "truncate outbox";\n',
+        'export const k = "SAVEPOINT s1";\n',
+        'export const l = "VALUES (1), (2)";\n',
+        'export const m = "delete from outbox";\n',
+        'export const n = "/* the claim */ SELECT 1";\n',
+        "export const o = `-- the claim\nSELECT id FROM outbox`;\n",
+        'export const p = "select id::text from outbox";\n',
+        '// we select and update rows in the core\nexport const q = "the update of the row";\n',
+        'export const r = "Select an option and set a value";\n',
       ];
 
       for (const [index, source] of files.entries()) {
@@ -390,12 +419,24 @@ describe("an adapter adds no SQL", () => {
       return [...sqlInAdapters(root)].toSorted();
     });
 
-    expect(found).toStrictEqual([
-      "packages/pg/src/f0.ts",
-      "packages/pg/src/f1.ts",
-      "packages/pg/src/f2.ts",
-      "packages/pg/src/f3.ts",
-      "packages/pg/src/f4.ts",
-    ]);
+    expect(found).toStrictEqual(
+      Array.from(
+        { length: 16 },
+        (_, index) => `packages/pg/src/f${index}.ts`
+      ).toSorted()
+    );
+  });
+
+  test("what the gate is: a heuristic over strings and templates, blind to SQL built by concatenation (the suite's F8 lint reads what an adapter really sent)", () => {
+    const found = withScratch((root) => {
+      writeFixture(
+        path.join(root, "packages/pg/src/built.ts"),
+        'export const built = ["SEL", "ECT 1"].join("");\n'
+      );
+
+      return [...sqlInAdapters(root)];
+    });
+
+    expect(found).toStrictEqual([]);
   });
 });

@@ -90,11 +90,21 @@ describe("construction", () => {
     expect(() => createPgOutbox({ db, outbox })).toThrow(/catalogue/u);
   });
 
-  test("a process that only enqueues on Hyperdrive is not refused for claims it never runs; a claim brings its follow-up read with it", () => {
+  test("on Hyperdrive every operation is unverified, enqueue included; a subset narrows the check, and allowUnverified accepts it", () => {
     const db = behindHyperdrive();
 
     expect(() =>
       createPgOutbox({ db, operations: ["enqueue"], outbox })
+    ).toThrow(
+      /concurrent DO NOTHING claim, with exactly one winner, was not run/u
+    );
+    expect(() =>
+      createPgOutbox({
+        allowUnverified: true,
+        db,
+        operations: ["enqueue"],
+        outbox,
+      })
     ).not.toThrow();
     expect(() =>
       createPgOutbox({

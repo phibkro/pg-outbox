@@ -59,6 +59,6 @@ One line per case: `ok` when TLC found what the case expects (`no error`, or `vi
 | `packages/core/src/**` | section 3 with 300 rounds; section 4 (the digest moves with `decode.ts`, `now.ts`, `operations.ts`, `outbox.ts`, `schema.ts`, `sql.ts`); the control of the changed statement by hand |
 | `packages/conformance/**` | section 3; for a new or changed control, that it fails for its own defect (its stderr line) and not for malformed SQL |
 | `model/**`, `tools/model/**` | section 4, and each broken case of `cases.json` by hand (turn its rule back on in a scratch copy: the case must then find no error) |
-| `packages/pg/**` | `PG_OUTBOX_ROUNDS=300 devenv shell -- bash -c 'cd packages/pg && bunx vp test run'` (the suite through the adapter, direct and behind PgBouncer; 80 tests); the adapter must hold no statement (`tools/quality` fails otherwise) |
+| `packages/pg/**` | `PG_OUTBOX_ROUNDS=300 devenv shell -- bash -c 'cd packages/pg && bunx vp test run'` (the suite through the adapter, direct and behind PgBouncer: every test passes, and the 26 controls print their failure lines); the adapter must hold no statement (`tools/quality` fails otherwise) |
 | `vendor/**`, `.gitmodules` | `git submodule status` (the pinned commit), `bun install --frozen-lockfile` on a fresh clone with `--recurse-submodules`, then `ready` |
 | `devenv.nix`, `devenv.lock` | `devenv shell -- tlc -h` and `devenv shell -- bun run ready` |
