@@ -2,7 +2,7 @@ import { assert, layer } from "@effect/vitest";
 import { declareOutbox } from "@pg-outbox/core";
 import type { ClaimResult, Claimed, EnqueueResult } from "@pg-outbox/core";
 import type { TxClient } from "@pg-txmode/effect";
-import { hyperdriveLayer } from "@pg-txmode/effect";
+import { hyperdriveLayer, supavisorLayer } from "@pg-txmode/effect";
 import { Cause, Effect, Exit, Layer, Redacted, Schema } from "effect";
 import { SqlClient } from "effect/sql";
 import type { SqlError } from "effect/sql/SqlError";
@@ -427,14 +427,25 @@ layer(tables)("the Effect adapter against PostgreSQL", (it) => {
   );
 });
 
-/** The Hyperdrive client is built lazily: no connection is made until a statement runs. */
+/** The Hyperdrive and Supavisor clients are built lazily: no connection is made until a statement runs. */
 const behindHyperdrive = hyperdriveLayer({
   url: Redacted.make("postgres://nobody@127.0.0.1:1/none"),
 });
 
-layer(behindHyperdrive)("the mode check", (it) => {
+const behindSupavisor = supavisorLayer({
+  url: Redacted.make("postgres://nobody@127.0.0.1:1/none"),
+});
+
+layer(behindHyperdrive)("the mode check on Hyperdrive", (it) => {
   it.effect(
-    "building the outbox on Hyperdrive refuses what the catalogue cannot vouch for, with its words",
+    "building the outbox on Hyperdrive needs no word from the caller: a recorded run measured every operation",
+    () => Effect.asVoid(make({ outbox: declaration }))
+  );
+});
+
+layer(behindSupavisor)("the mode check", (it) => {
+  it.effect(
+    "building the outbox on Supavisor refuses what the catalogue cannot vouch for, with its words",
     () =>
       Effect.gen(function* () {
         const refused = yield* make({ outbox: declaration }).pipe(Effect.flip);
@@ -445,7 +456,7 @@ layer(behindHyperdrive)("the mode check", (it) => {
   );
 
   it.effect(
-    "a process that only enqueues is refused too, with the gap of the recorded run; allowUnverified accepts it; a claim brings its follow-up read",
+    "a process that only enqueues is refused too; allowUnverified accepts it; a claim brings its follow-up read",
     () =>
       Effect.gen(function* () {
         const enqueueOnly = yield* make({
@@ -454,10 +465,6 @@ layer(behindHyperdrive)("the mode check", (it) => {
         }).pipe(Effect.flip);
 
         assert.strictEqual(enqueueOnly.support, "unverified");
-        assert.match(
-          enqueueOnly.message,
-          /concurrent DO NOTHING claim, with exactly one winner, was not run/u
-        );
         yield* make({
           allowUnverified: true,
           operations: ["enqueue"],

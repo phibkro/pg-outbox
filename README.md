@@ -2,7 +2,7 @@
 
 A narrow, client-neutral **PostgreSQL outbox** that writes a message in your business transaction and delivers it **at least once** through a transaction pooler (PgBouncer in transaction mode, Supavisor, Cloudflare Hyperdrive), with a stale consumer unable to harm a newer one.
 
-**Status: in development; nothing is published to npm, and nothing has run through Hyperdrive.** Spec 0000 (the development lifecycle), spec 0001 (the core, its conformance suite and its model), spec 0002 (the `pg` adapter) and spec 0003 (the Effect adapter) are in review, stacked in that order.
+**Status: in development; nothing is published to npm.** Specs 0000 to 0003 (the development lifecycle, the core with its conformance suite and model, the `pg` adapter, the Effect adapter) are merged; spec 0004 (the Hyperdrive probe) is in review. One run of the suite through Cloudflare Hyperdrive (caching enabled, Free plan, a direct Neon endpoint) is recorded, and what it covers is named in spec 0004.
 
 ## What it is
 
@@ -31,11 +31,11 @@ PG_OUTBOX_ROUNDS=300 devenv shell -- bash -c 'cd packages/conformance && bunx vp
 
 ## Roadmap
 
-1. Spec 0000: development lifecycle and scaffold (copied from pg-txmode, with provenance). In review.
-2. Spec 0001: the core, the schema, the model and the conformance suite. In review.
-3. Spec 0002: the `pg` adapter. In review.
-4. Spec 0003: the Effect adapter. In review.
-5. Spec 0004: the Hyperdrive probe (`apps/hyperdrive-probe`): the whole suite through a Worker and Hyperdrive in front of a throwaway Neon branch. The runner, the Worker and the suite pass on this machine (a local twin of the Worker, and the real Worker under workerd); the deployed run needs the operator's Cloudflare credentials, and until it has run and its output is recorded under `docs/evidence/hyperdrive/`, every Hyperdrive cell is `unverified`.
+1. Spec 0000: development lifecycle and scaffold (copied from pg-txmode, with provenance). Merged.
+2. Spec 0001: the core, the schema, the model and the conformance suite. Merged.
+3. Spec 0002: the `pg` adapter. Merged.
+4. Spec 0003: the Effect adapter. Merged.
+5. Spec 0004: the Hyperdrive probe (`apps/hyperdrive-probe`): the whole suite through a Worker and Hyperdrive in front of a throwaway Neon branch. In review. It ran once, on 2026-10-30, and the raw output is under `docs/evidence/hyperdrive/`: the suite (15 falsifiers, 28 controls) passed 43 of 43 through Hyperdrive with caching enabled, twice, after two earlier runs found a defect of the suite (its own reads were served from the cache) and one lost connection. All 13 operations are now `yes` on Hyperdrive; the Worker, the Hyperdrive configuration and the credentials are gone.
 
 ## Licence
 

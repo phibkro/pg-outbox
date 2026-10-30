@@ -214,6 +214,10 @@ const scrub = (text: string): string =>
     .replaceAll(/https?:\/\/[^\s"')]+/gu, "<url>")
     .replaceAll(/wss?:\/\/[^\s"')]+/gu, "<url>")
     .replaceAll(/\b[0-9a-f]{32,}\b/gu, "<hex>")
+    .replaceAll(
+      /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gu,
+      "<uuid>"
+    )
     .replaceAll(/[\w-]+\.neon\.tech/gu, "<host>");
 
 /** The recorded run: what ran, with what, and the suite's own lines. The format of pg-txmode's recorded run of another project. */
@@ -224,11 +228,12 @@ const evidenceOf = (raw: string, day: string): string =>
     "| | |",
     "| --- | --- |",
     `| Date (UTC) | ${day} |`,
-    `| Commit | ${spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf-8" }).stdout.trim()} |`,
+    `| Commit | ${process.env.PG_OUTBOX_RECORD_COMMIT ?? spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf-8" }).stdout.trim()} |`,
     "| What ran | the conformance suite of pg-outbox (spec 0001), unchanged, through the `pg` adapter over a client whose statements run in a Worker deployed on Cloudflare; the Worker's only database address is a Hyperdrive binding, in front of a disposable Neon branch (PostgreSQL) |",
     "| Worker compatibility | date `2026-10-01`, flags `nodejs_compat`, `enable_request_signal` |",
     "| Hyperdrive caching | **enabled** (Hyperdrive's default) |",
     `| Rounds of a race | ${process.env.PG_OUTBOX_ROUNDS ?? "20"} |`,
+    `| Note | ${process.env.PG_OUTBOX_RECORD_NOTE ?? "none"} |`,
     "| Left out | the Worker's address, the Hyperdrive and Neon identifiers, the host, the token |",
     "",
     "Hyperdrive caching: enabled",

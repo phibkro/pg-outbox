@@ -19,6 +19,7 @@ const leaks = (text: string): readonly string[] => {
     /\.neon\.tech/u,
     /postgres(?:ql)?:\/\//u,
     /\b[0-9a-f]{32,}\b/u,
+    /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/u,
     /Sec-WebSocket-Protocol: probe\./u,
   ].flatMap((pattern) =>
     pattern.test(withoutCommit) ? [String(pattern)] : []
@@ -52,6 +53,9 @@ describe("the recorded runs through Hyperdrive carry no address, host, connectio
     ).toHaveLength(1);
     expect(leaks("postgres://user@host/db")).toHaveLength(1);
     expect(leaks("account 0123456789abcdef0123456789abcdef")).toHaveLength(1);
+    const uuid = "123e4567-e89b-42d3-a456-426614174000";
+
+    expect(leaks(`a claim of ${uuid} was seen`)).toHaveLength(1);
     const commit = "0123456789abcdef0123456789abcdef01234567";
 
     expect(leaks(`| Commit | ${commit} |`)).toStrictEqual([]);

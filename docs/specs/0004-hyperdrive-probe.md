@@ -50,15 +50,15 @@ vitest: the suite, unchanged                   Worker `pg-outbox-probe`
 ## Constraints and values
 
 - **Nothing is shown that was not run.** A cell stops being `unverified` only for an operation whose falsifiers **all** passed through the Worker, with the raw output recorded and named by the cell. A falsifier that could not run this way is listed, with its operation, and its cells stay `unverified`.
-- **One source per fact.** The measured cells are data of the core (`measuredOn`, next to `coverageGaps`), each naming its evidence file; a test fails when the file is missing, does not name the operation, or lacks a passing line for each of its falsifiers. pg-txmode's catalogue is where the fact belongs, and a follow-up there turns its `unknown` cells into `hyperdrive-probe` cells with the same evidence; until that is merged this repository carries the fact (the same trade as `coverageGaps`).
-- **Credentials.** Read by key names and lengths only; never printed, logged, committed or sent to the lead. The Cloudflare credentials are the Alchemy profile `default`; the Neon one is the operator's file. Both are deleted or expire at teardown.
+- **One source per fact.** The measured cells are data of the core (`measurements`, next to `coverageGaps`), each naming its evidence file; a test fails when the file is missing, does not show caching enabled, or lacks a passing line for each falsifier of the operation. pg-txmode's catalogue is where the fact belongs, and a follow-up there turns its `unknown` cells into `hyperdrive-probe` cells with the same evidence; until that is merged this repository carries the fact (the same trade as `coverageGaps`).
+- **Credentials.** Read by key names and lengths only; never printed, logged, committed or sent to the lead. The Cloudflare one is the operator's scoped API token in a 0600 file (Revisions); the Neon one is the operator's file. Both files are deleted at teardown, and the token expires by itself.
 - **Cost and footprint.** One Worker and one Hyperdrive configuration, destroyed afterwards, and checked by name through the Cloudflare API; no R2, KV, queue, DNS or domain. The Free plan's 100,000 queries a day and its 10 ms of CPU per request are limits of the account, not choices of this spec (see Risks).
 - **No second copy of the suite.** The app imports `pgSubject` from `packages/pg/test/` and `defineSubjectConformance` from `@pg-outbox/conformance`; it adds a transport and nothing else.
 - The app is a private workspace package, `apps/*` is a new category beside `packages/*` and `tools/*`: it depends on libraries and on the harness, nothing depends on it. Its Worker bundle imports `pg` and `zod` only.
 
 ## What a passing run settles
 
-The falsifiers that exercise each operation are listed in `measuredOn` (core). An operation is measured when all of its falsifiers passed through the Worker **with caching enabled**:
+The falsifiers that exercise each operation are listed in `exercisedBy` (core). An operation is measured when all of its falsifiers passed through the Worker **with caching enabled**:
 
 | Operation | Falsifiers |
 | --- | --- |
@@ -86,19 +86,19 @@ The table is not a claim: `packages/conformance/test/exercised.test.ts` runs eac
 | `apps/hyperdrive-probe/deploy` | `alchemy.run.ts`, its own `package.json` and lockfile |
 | `apps/hyperdrive-probe/scripts` | `probe.ts` (`local`, `up`, `run`, `record`, `down`, `status`), `spike.ts` (`select 1` and a transaction under workerd), `wrangler.dev.jsonc` |
 | `packages/conformance` | F19 and its control |
-| core | `measuredOn` and the lift of an `unverified` cell by recorded evidence (after the run) |
-| `docs/evidence/hyperdrive/` | the raw output of the run (after the run) |
+| core | `measurements`, `exercisedBy` and `supportGiven`: the lift of an `unverified` cell by recorded evidence |
+| `docs/evidence/hyperdrive/` | the raw output of the four runs (two of them failed, and say so in their `Note` row) |
 | gates | `packages/pg/test/pgSubject.ts` takes `allowUnverified`; the pooler-fact test and the boundary tests know the new category; the verify skill |
 
 ## Falsifiers
 
 | # | Falsifier (must hold) | Gate | Negative control (must fail) |
 | --- | --- | --- | --- |
-| P1 | The runner, the protocol and the remote client are right: the suite (14 falsifiers, 26 controls) passes through the twin | `local.test.ts` | break the client's transaction (omit `COMMIT`): F1, F5 and others fail |
+| P1 | The runner, the protocol and the remote client are right: the suite (15 falsifiers, 28 controls, 43 tests) passes through the twin | `local.test.ts` | break the client's transaction (omit `COMMIT`): F1, F5 and others fail |
 | P2 | The Worker's own code runs under workerd: `/health`, `select 1` and a transaction answer | `scripts/spike.ts` | a wrong token answers 401; a request without the upgrade answers 426 |
 | P3 | The suite passes under workerd (the real Worker code in the Workers runtime; still not Hyperdrive) | `probe local` | as P1 |
 | P4 | The budget stops a run before the limit and counts across runs of the day | `budget.test.ts` | a limit of 3 stops the fourth statement; a day's file of yesterday counts as 0 |
-| P5 | **Through Hyperdrive**: for each operation, the falsifiers that exercise it pass, and the 26 controls still fail through it | `probe run` | the controls themselves; a control that passes is a finding |
+| P5 | **Through Hyperdrive**: for each operation, the falsifiers that exercise it pass, and the 28 controls still fail through it | `probe run` | the controls themselves; a control that passes is a finding (run 1 found that the suite's own reads were cached) |
 | P6 | The evidence is the run: the file names the Worker's compatibility flags, the PostgreSQL version of the origin, the caching setting and the rounds, and holds the suite's raw lines; no identifier, hostname or secret | `probe record` and a test that scans the file | a fixture with a hostname or a token-shaped string is refused |
 | P7 | A measured cell is backed by its evidence: the file exists, names the operation, has a passing line for each falsifier | `support.test.ts` | point a cell at a missing file; remove a falsifier's line |
 | P8 | Teardown is complete and checked by name: the Worker and the Hyperdrive configuration are absent from the account, the token file and the Neon string file are deleted | `probe down`, `probe status` | `status` after `up` lists both; after `down` lists none |
@@ -109,7 +109,7 @@ The table is not a claim: `packages/conformance/test/exercised.test.ts` runs eac
 | Risk | Mitigation |
 | --- | --- |
 | The Free plan allows 10 ms of CPU per request; a long WebSocket session may exceed it | Find out on the first deploy (the Worker's CPU time is small: it parses, forwards and serialises). If a session is cut, the spec records which plan limit did it, and the run is repeated on a Paid plan only with the operator's approval |
-| The OAuth profile `default` has no Hyperdrive scope in its list, and its token had expired | A read-only API call comes first (list Hyperdrive configurations); a 403 stops the run and names the permission to give |
+| The OAuth profile `default` had no Hyperdrive scope in its list, and its token had expired | Replaced by the operator's scoped API token (Revisions). A read-only API call comes first (list Hyperdrive configurations); a 403 stops the run and names the permission to give. It did, once, and the operator added the group |
 | Hyperdrive's pool is shared between concurrent claimers: a stalled transaction can starve a claim | That is the behaviour under test; the suite's own timeouts and the `within` bounds of spec 0002 turn a hang into a failure |
 | A statement through Hyperdrive is slow (a round trip each), and 20-round races multiply it | Rounds default to 20; `PG_OUTBOX_ROUNDS` raises them while the budget allows |
 | The result of one run on one day is evidence of that day | The file records the date, the flags and the versions; a cell's note says "measured on <date>" |
@@ -123,3 +123,7 @@ None open. Settled by the operator before this spec: the Cloudflare profile (`de
 ## Revisions
 
 - **2026-10-30, plan written** with the first local runs: the suite passes through the twin (40 tests) and `select 1` and a transaction pass under workerd. Alchemy beta.84 does not run with `effect` 4.1.0 (`effect/Crypto`), which is why the stack has its own directory.
+- **2026-10-30, credentials.** The Alchemy profile `default` was an expired OAuth login without a Hyperdrive scope. The operator stored a scoped API token (Workers Scripts Edit, Hyperdrive Edit, Account Settings Read; one account; expires in 1 to 2 days) in a 0600 file (`~/.config/pg-outbox-probe/cloudflare-api-token`). `probe` reads it by shape and length only, finds the one account it sees with a read-only call, and gives both to Alchemy through `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in the child's environment (Alchemy: environment credentials take precedence over any profile), never on a command line. Its first Hyperdrive call answered `403 10000 Authentication error` until the operator added the Hyperdrive group; then `200`, with no configuration and no Worker in the account. `down` deletes the token file and the Neon string file only after `status` shows nothing of the probe in the account.
+- **2026-10-30, the run, and what it found.** Four runs of the suite through the deployed Worker (all raw output under `docs/evidence/hyperdrive/`): run 1 failed F1, F5, F7 and F19: the suite's own ground-truth reads (`count`, `stateOf`: a plain `SELECT` of the table) were **served from Hyperdrive's cache**, which says what the catalogue says about reads; they now call `clock_timestamp()` on every target (`fixtures.ts`), and run 1 is evidence for no operation. Run 2 lost one connection of the Worker at F2 ("Connection terminated unexpectedly", cause not established: one run, one occurrence) and every later statement of that socket failed ("not queryable"): a failure without a SQLSTATE now ends the session (`session.ts` closes the socket, the remote client discards it), and run 2 is evidence for no operation. Runs 3 and 4, on the redeployed Worker, passed 43 of 43 (15 falsifiers and 28 controls, 20 rounds of a race, 24 sockets): the first on the new Worker, the second a minute later. Run 4 is the one `measurements` cites.
+- **2026-10-30, what the cells say now.** `measurements` (core) holds one entry per operation, through Hyperdrive, naming `docs/evidence/hyperdrive/2026-10-30-pg-outbox-probe.md`; all 13 operations are measured, so `operationSupport(hyperdrive, …)` is `yes` for every one and a process behind Hyperdrive no longer says `allowUnverified`. F12 follows the data: Hyperdrive accepts exactly the operations a recorded run measured, Supavisor (nothing ran) refuses every one; the tests of the adapters that built an outbox on Hyperdrive to see a refusal use Supavisor. The data is named `measurements`, not `measuredOn` (the plan's word). What it does **not** say: that every statement of every use is safe behind Hyperdrive on any plan, any database or any cache setting (one run set: caching enabled, Free plan, one origin region, a direct Neon endpoint, 20 rounds), nor anything about the pooled Neon endpoint behind Hyperdrive, nor `LISTEN` or session advisory locks (excluded by design, F8).
+- **2026-10-30, the suite grew.** F19 and the `open` assertion of F15 (see "What a passing run settles"), `exercisedBy` and its test, `Measurement`/`supportGiven` and their tests, and `tools/quality/test/evidence.test.ts` (a recorded run names no Worker address, no database host, no connection string, no 32-digit identifier, apart from the commit row).

@@ -1,7 +1,9 @@
 import {
+  measurements,
   operationIds,
   operations,
   operationSupport,
+  refusalOf,
   requireOperation,
   UnsupportedOperationError,
 } from "@pg-outbox/core";
@@ -188,7 +190,7 @@ const poolers: readonly ConnectionMode[] = [
   neonPooler,
 ];
 
-/** The modes where nothing of this library ran: the evidence is another mode's or another use's. */
+/** The modes whose evidence is not the catalogue's measured cells for this use: only a recorded run lifts an operation. */
 const unmeasured: readonly ConnectionMode[] = [hyperdrive, supavisor];
 
 const uncachedCall = (text: string): boolean =>
@@ -219,21 +221,24 @@ export const modeCheck: Falsifier = {
       }
     }
 
-    // Hyperdrive and Supavisor: nothing was run through either (Hyperdrive's recorded run did not cover a concurrent
-    // `ON CONFLICT DO NOTHING`; Supavisor's cells are PgBouncer's), so every operation is unverified and refused unless
-    // the caller accepts that.
+    // Hyperdrive and Supavisor: the catalogue's evidence is another use's (Hyperdrive's recorded run did not cover a concurrent
+    // `ON CONFLICT DO NOTHING`) or another mode's (Supavisor's cells are PgBouncer's). An operation is `yes` only where a
+    // recorded run of this suite measured it through the mode (`measurements`, spec 0004); every other one is unverified,
+    // refused unless the caller accepts that.
     for (const mode of unmeasured) {
       for (const id of operationIds) {
+        const measured = measurements.some(
+          (run) => run.operation === id && run.mode === mode
+        );
+
         expect(
           operationSupport(mode, id),
           `${id} on ${JSON.stringify(mode)}`
-        ).toBe("unverified");
+        ).toBe(measured ? "yes" : "unverified");
         expect(
-          () => {
-            requireOperation(mode, id);
-          },
+          refusalOf(mode, id) instanceof UnsupportedOperationError,
           `${id} refused by default on ${JSON.stringify(mode)}`
-        ).toThrow(UnsupportedOperationError);
+        ).toBe(!measured);
         expect(
           () => {
             requireOperation(mode, id, { allowUnverified: true });
@@ -254,5 +259,5 @@ export const modeCheck: Falsifier = {
     ).toStrictEqual([]);
   },
   title:
-    "the mode check: PgBouncer and direct accept every operation, Hyperdrive and Supavisor refuse every one as unverified, every read calls an uncached function",
+    "the mode check: PgBouncer, Neon and direct accept every operation; Hyperdrive accepts exactly the operations a recorded run measured and Supavisor refuses every one as unverified; every read calls an uncached function",
 };

@@ -10,7 +10,7 @@ import {
 } from "@pg-txmode/core";
 import type { ConnectionMode, RowId, Support } from "@pg-txmode/core";
 
-import { isOperationId, operationById } from "./operations.ts";
+import { isOperationId, operationById, operationIds } from "./operations.ts";
 import type { OperationId } from "./operations.ts";
 
 /**
@@ -174,8 +174,19 @@ export interface Measurement {
   readonly on: string;
 }
 
-/** The recorded runs; none exists until the run of spec 0004 is recorded. */
-export const measurements: readonly Measurement[] = [];
+/**
+ * The recorded runs. The one run of 2026-10-30 (spec 0004: the suite of 15 falsifiers and 28 controls through a deployed Worker,
+ * a Hyperdrive configuration with caching enabled, a disposable Neon branch; 43 of 43 passed, twice) measured every operation
+ * through that Hyperdrive path: each operation's falsifiers (`exercisedBy`) all held.
+ */
+export const measurements: readonly Measurement[] = operationIds.map(
+  (operation) => ({
+    evidence: "docs/evidence/hyperdrive/2026-10-30-pg-outbox-probe.md",
+    mode: hyperdrive,
+    on: "2026-10-30",
+    operation,
+  })
+);
 
 /** The operations that no cell of the mode forbids: a measurement lifts `unverified`, never `no`. */
 const forbidden = (mode: ConnectionMode, id: OperationId): boolean =>

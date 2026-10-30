@@ -4,7 +4,7 @@ import {
   ProtocolError,
   UnsupportedOperationError,
 } from "@pg-outbox/core";
-import { capabilities, direct, hyperdrive } from "@pg-txmode/core";
+import { capabilities, direct, hyperdrive, supavisor } from "@pg-txmode/core";
 import type {
   Param as TxParam,
   Row,
@@ -70,6 +70,13 @@ const behindHyperdrive = (): TxClient => ({
   mode: hyperdrive,
 });
 
+/** The stub client, said to stand behind Supavisor: no run of this library was made through it. */
+const behindSupavisor = (): TxClient => ({
+  ...stub().db,
+  capabilities: capabilities(supavisor),
+  mode: supavisor,
+});
+
 const token = "00000000-0000-4000-8000-000000000000";
 
 describe("construction", () => {
@@ -82,7 +89,7 @@ describe("construction", () => {
   });
 
   test("a mode that cannot honour an operation refuses it when the outbox is built, quoting the catalogue", () => {
-    const db = behindHyperdrive();
+    const db = behindSupavisor();
 
     expect(() => createPgOutbox({ db, outbox })).toThrow(
       UnsupportedOperationError
@@ -90,14 +97,18 @@ describe("construction", () => {
     expect(() => createPgOutbox({ db, outbox })).toThrow(/catalogue/u);
   });
 
-  test("on Hyperdrive every operation is unverified, enqueue included; a subset narrows the check, and allowUnverified accepts it", () => {
-    const db = behindHyperdrive();
+  test("behind Hyperdrive, which a recorded run measured for every operation, the outbox is built without a word from the caller", () => {
+    expect(() =>
+      createPgOutbox({ db: behindHyperdrive(), outbox })
+    ).not.toThrow();
+  });
+
+  test("behind Supavisor every operation is unverified; a subset narrows the check, and allowUnverified accepts it", () => {
+    const db = behindSupavisor();
 
     expect(() =>
       createPgOutbox({ db, operations: ["enqueue"], outbox })
-    ).toThrow(
-      /concurrent DO NOTHING claim, with exactly one winner, was not run/u
-    );
+    ).toThrow(UnsupportedOperationError);
     expect(() =>
       createPgOutbox({
         allowUnverified: true,
