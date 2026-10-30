@@ -258,6 +258,34 @@ export const dedupe: Falsifier = {
         ],
       },
     },
+    {
+      describe:
+        "a unique index over pending rows only: a delivered row frees its key before cleanup, against the stated window",
+      id: "dedupe-pending-only",
+      mutation: {
+        kind: "all",
+        of: [
+          {
+            kind: "migration",
+            rewrite: (statements) =>
+              statements.map((statement) =>
+                statement.replace(
+                  "WHERE dedupe_key IS NOT NULL",
+                  "WHERE dedupe_key IS NOT NULL AND status = 'pending'"
+                )
+              ),
+          },
+          {
+            kind: "statement",
+            operation: "enqueue",
+            rewrite: replacing(
+              "WHERE dedupe_key IS NOT NULL",
+              "WHERE dedupe_key IS NOT NULL AND status = 'pending'"
+            ),
+          },
+        ],
+      },
+    },
   ],
   id: "F14",
   run: async ({ subject }) => {
