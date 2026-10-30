@@ -1,6 +1,6 @@
 {
   "name": "@pg-outbox/pg",
-  "version": "0.0.0",
+  "version": "0.1.0-alpha.0",
   "description": "The pg adapter of the pg-outbox core: one function per operation over a @pg-txmode/pg client; enqueue and holdClaim take the Transaction.",
   "license": "Apache-2.0",
   "type": "module",

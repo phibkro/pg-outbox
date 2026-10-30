@@ -472,6 +472,17 @@ describe("the Effect peer range", () => {
   });
 });
 
+/** The conditions of a recorded run that a README must repeat word for word: the region, the sockets, the rounds, the server. */
+const conditionsOf = (covers: string): readonly string[] => [
+  ...new Set(
+    [
+      ...covers.matchAll(
+        /aws:[a-z0-9-]+|\d+ sockets|\d+ rounds|PostgreSQL [\d.]+/gu
+      ),
+    ].map((match) => match[0])
+  ),
+];
+
 describe("what ships with every package", () => {
   test("the repository has the licence and the notice that stage copies", () => {
     expect(readFileSync(path.join(repoRoot, "NOTICE"), "utf-8")).toContain(
@@ -509,5 +520,44 @@ describe("what ships with every package", () => {
     expect(missing("# @pg-outbox/core\n\nA description.\n")).toStrictEqual(
       required
     );
+  });
+
+  test("the README's conditions and date are the measurements' (read from the core's source as text: tools depend on no package)", () => {
+    const source = readFileSync(
+      path.join(repoRoot, "packages/core/src/support.ts"),
+      "utf-8"
+    );
+
+    const covers =
+      /const runCovers =\s*"(?<text>[^"]+)"/u.exec(source)?.groups?.text ?? "";
+
+    const days = [...source.matchAll(/on: "(?<day>\d{4}-\d{2}-\d{2})"/gu)].map(
+      (match) => match.groups?.day ?? ""
+    );
+
+    const conditions = conditionsOf(covers);
+
+    // The pattern finds something: a changed wording of `covers` that the pattern no longer reads must fail here.
+    expect(conditions.length).toBeGreaterThanOrEqual(4);
+    expect(days.length).toBeGreaterThan(0);
+
+    for (const entry of published) {
+      const readme = readFileSync(
+        path.join(repoRoot, entry.dir, "README.md"),
+        "utf-8"
+      );
+
+      expect(
+        [...conditions, ...days].filter((word) => !readme.includes(word)),
+        entry.manifest.name
+      ).toStrictEqual([]);
+    }
+
+    // Control: the condition the data changes ("30 rounds") is not in a README that says 20.
+    expect(
+      conditionsOf("a run of 30 rounds, 24 sockets").filter(
+        (word) => !"20 rounds, 24 sockets".includes(word)
+      )
+    ).toStrictEqual(["30 rounds"]);
   });
 });
