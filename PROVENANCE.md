@@ -85,3 +85,16 @@ Third-party packages used by spec 0003 (installed, not copied): `effect` 4.1.0, 
 | `tools/quality/test/effectBoundary.test.ts` | as in spec 0003 | scans `apps/` too; an app's `deploy/` directory may import Effect (Alchemy) |
 
 Third-party packages used by spec 0004 (installed, not copied): `ws` 8.22.0 (MIT), `wrangler` 4.156.0 through `bunx` (Apache-2.0 or MIT), `@cloudflare/workers-types` 5.20261030.1 (Apache-2.0 or MIT), and in `deploy/`: `alchemy` and `@alchemy.run/cloudflare` 2.0.0-beta.84 (Apache-2.0), `effect` 4.0.7 (MIT).
+
+## Changed by spec 0005
+
+pg-txmode is a dependency from the npm registry, not a submodule. Nothing of it is copied. These rows replace the ones of spec 0001 that name the submodule:
+
+| File | Source | Deviation |
+| --- | --- | --- |
+| `@pg-txmode/core`, `pg`, `effect`, `lint`, `harness` | [`phibkro/pg-txmode`](https://github.com/phibkro/pg-txmode) `0.1.0-alpha.0` from the npm registry (Apache-2.0, the operator's; provenance attached to the published packages) | exact version in every manifest; replaces `vendor/pg-txmode` (the submodule at `12f1aba`), which spec 0001 named a stopgap |
+| `package.json`, `packages/*/package.json`, `apps/hyperdrive-probe/package.json`, `bun.lock` | as in spec 0004 | `workspaces` no longer list pg-txmode's packages; the `catalog` lost `libpg-query` and `@effect/platform-node` |
+| `.github/workflows/checks.yml`, `vite.config.ts`, `knip.json`, `.jscpd.json` | as in spec 0004 | no submodule checkout; no `vendor/**` exception |
+| `tools/quality/test/pgTxmode.test.ts` | none | original: the pin is one exact version everywhere and no submodule is left |
+
+The rows of spec 0001 and later that say "the submodule" for `packages/pg` and `packages/effect` read "pg-txmode `12f1aba`" as their design source; their dependency is now the published `0.1.0-alpha.0`.

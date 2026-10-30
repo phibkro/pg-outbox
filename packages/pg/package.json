@@ -12,12 +12,12 @@
   },
   "dependencies": {
     "@pg-outbox/core": "workspace:*",
-    "@pg-txmode/pg": "workspace:*"
+    "@pg-txmode/pg": "0.1.0-alpha.0"
   },
   "devDependencies": {
     "@pg-outbox/conformance": "workspace:*",
-    "@pg-txmode/core": "workspace:*",
-    "@pg-txmode/harness": "workspace:*",
+    "@pg-txmode/core": "0.1.0-alpha.0",
+    "@pg-txmode/harness": "0.1.0-alpha.0",
     "@types/node": "catalog:",
     "typescript": "catalog:",
     "vite-plus": "catalog:"

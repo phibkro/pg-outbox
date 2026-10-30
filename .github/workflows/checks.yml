@@ -1,7 +1,7 @@
 # Provenance: adapted from phibkro/pg-txmode @ 12f1abac1eb9d3ebad7e123a12f56896f896a272 (.github/workflows/checks.yml at spec 0000,
 # f5efb53), which adapted it from reebeat/studio @ d4fd75eaca83b9e8a98f073d5b1d957da5d6b8b8, reebeat/reebeat
 # @ f7c348877585f54b6bf00651608726dd7e5044d3 and phibkro/vektorprogrammet-reimagined @ 797e9e41d96194b9479ff224ac1c40bbc0545888.
-# Deviation from pg-txmode: the header; the submodule checkout (spec 0001, vendor/pg-txmode); the steps "Model" (TLC) and "Effect diagnostics" (spec 0003: `bun run check:effect`); the other commands and pins are the same.
+# Deviation from pg-txmode: the header; the steps "Model" (TLC) and "Effect diagnostics" (spec 0003: `bun run check:effect`); the other commands and pins are the same. Spec 0005 removed the submodule checkout that spec 0001 added: pg-txmode comes from the registry.
 # Each step calls the root script of the same name (`bun run ready` is their sequence), never its command.
 name: Checks
 
@@ -20,8 +20,6 @@ jobs:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 0
-          # vendor/pg-txmode is pinned by commit (spec 0001); the clone needs no more than that submodule.
-          submodules: true
       - uses: cachix/install-nix-action@3c6342b75005b9cc7c7d4069c3e9179247c89012 # v31
       - uses: cachix/cachix-action@97e5ff84d02b3b4f9936339f767e17f03c9252ed # v16
         with:

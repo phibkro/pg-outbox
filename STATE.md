@@ -10,9 +10,11 @@ Next:
 
 - Merge spec 0004 with `merge.sh` once a round passes.
 - The operator should revoke the Cloudflare API token the probe used (it expires by itself in 1 to 2 days); the Neon branch expires by itself.
-- After the merges: the replacement of `vendor/pg-txmode` (spec 0001) once pg-txmode publishes, with the operator's authority.
+- Spec 0005 (pg-txmode from the registry; the submodule goes): built on `feat/0005-published-pg-txmode`, PR after the harness is published.
+- Then: pg-outbox's own first release path (a spec modelled on pg-txmode's spec 0006).
 
 Blocked:
 
 - Nothing is blocked on Hyperdrive any more: the run of 2026-10-30 is recorded (spec 0004). What it did not cover (the pooled Neon endpoint behind Hyperdrive, caching off, other plans or regions, a longer run) stays unverified, and pg-txmode's catalogue still shows `unknown` cells for Hyperdrive: a follow-up there should carry the measured cells (a per-cell "covers" and "measured on").
-- Publishing to npm needs the operator's authority; it also retires the `vendor/pg-txmode` submodule (spec 0001, "Dependency on pg-txmode").
+- Publishing pg-outbox to npm needs the operator's authority (a separate spec, modelled on pg-txmode's spec 0006).
+- Spec 0005 waits for `@pg-txmode/harness` on the registry (pg-txmode's spec 0007): its PR does not open before that.
