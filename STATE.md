@@ -4,11 +4,10 @@ Lifecycle: build
 
 Now:
 
-pg-outbox is a narrow Postgres outbox with a client-neutral core and thin `pg` and Effect adapters, built on pg-txmode. Specs 0000 (development lifecycle and scaffold), 0001 (the core: protocol, schema, conformance suite, TLA+ model), 0002 (the `pg` adapter) and 0003 (the Effect adapter) are merged. Spec 0004 (the Hyperdrive probe: the suite through a deployed Worker and Hyperdrive; every operation measured) is built and in review.
+pg-outbox is a narrow Postgres outbox with a client-neutral core and thin `pg` and Effect adapters, built on pg-txmode. Specs 0000 (development lifecycle and scaffold), 0001 (the core: protocol, schema, conformance suite, TLA+ model), 0002 (the `pg` adapter), 0003 (the Effect adapter) and 0004 (the Hyperdrive probe: the suite through a deployed Worker and Hyperdrive; every operation measured) are merged. Spec 0005 (pg-txmode from the registry) is in review.
 
 Next:
 
-- Merge spec 0004 with `merge.sh` once a round passes.
 - The operator should revoke the Cloudflare API token the probe used (it expires by itself in 1 to 2 days); the Neon branch expires by itself.
 - Spec 0005 (pg-txmode from the registry; the submodule goes): in review. Merge with `merge.sh` once a round passes.
 - Then: pg-outbox's own first release path (a spec modelled on pg-txmode's spec 0006).
