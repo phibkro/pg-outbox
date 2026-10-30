@@ -2,7 +2,7 @@
 
 A narrow, client-neutral **PostgreSQL outbox** that writes a message in your business transaction and delivers it **at least once** through a transaction pooler (PgBouncer in transaction mode, Supavisor, Cloudflare Hyperdrive), with a stale consumer unable to harm a newer one.
 
-**Status: in development; nothing is published to npm.** Specs 0000 to 0003 (the development lifecycle, the core with its conformance suite and model, the `pg` adapter, the Effect adapter) are merged; spec 0004 (the Hyperdrive probe) is in review. One run of the suite through Cloudflare Hyperdrive (caching enabled, Free plan, a direct Neon endpoint) is recorded, and what it covers is named in spec 0004.
+**Status: in development; nothing is published to npm yet.** Specs 0000 to 0005 (the development lifecycle, the core with its conformance suite and model, the `pg` adapter, the Effect adapter, the Hyperdrive probe, pg-txmode from the registry) are merged; spec 0006 (the release path for `@pg-outbox/core`, `pg` and `effect`) is in review. One run of the suite through Cloudflare Hyperdrive (caching enabled, Free plan, a direct Neon endpoint) is recorded, and what it covers is named in spec 0004.
 
 ## What it is
 
