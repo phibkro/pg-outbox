@@ -1,6 +1,6 @@
 import { assert, layer } from "@effect/vitest";
 import { declareOutbox } from "@pg-outbox/core";
-import type { EnqueueResult } from "@pg-outbox/core";
+import type { ClaimResult, Claimed, EnqueueResult } from "@pg-outbox/core";
 import type { TxClient } from "@pg-txmode/effect";
 import { hyperdriveLayer } from "@pg-txmode/effect";
 import { Cause, Effect, Exit, Layer, Redacted, Schema } from "effect";
@@ -9,6 +9,7 @@ import type { SqlError } from "effect/sql/SqlError";
 import { TestClock } from "effect/testing";
 import { expectTypeOf } from "vite-plus/test";
 
+import type { ClaimLost } from "../src/index.ts";
 import {
   effectClock,
   InTransaction,
@@ -62,6 +63,92 @@ const withMessage = Effect.gen(function* () {
 
   return outbox;
 });
+
+type Mailbox = Effect.Success<typeof withMessage>;
+
+const isClaimed = (claim: ClaimResult<"Mail">): claim is Claimed<"Mail"> =>
+  claim._tag === "Claimed";
+
+/** The claim of row 1, which `withMessage` enqueued: a claim that is not `Claimed` is a defect of the test. */
+const claimOne = (outbox: Mailbox) =>
+  Effect.filterOrElse(
+    outbox.claimById({ id: "1", leaseMs: 1000 }),
+    isClaimed,
+    (claim) => Effect.die(`expected a claim of row 1, got ${claim._tag}`)
+  );
+
+type ClaimOfOne = Effect.Success<ReturnType<typeof claimOne>>;
+
+/** Each call that settles or holds a claim, given a token that is no longer the row's. */
+const lostCalls = [
+  [
+    "ack",
+    (outbox: Mailbox, claim: ClaimOfOne) =>
+      outbox.ack({ id: claim.id, token: claim.token }),
+  ],
+  [
+    "bury",
+    (outbox: Mailbox, claim: ClaimOfOne) =>
+      outbox.bury({ errorClass: "rejected", id: claim.id, token: claim.token }),
+  ],
+  [
+    "holdClaim",
+    (outbox: Mailbox, claim: ClaimOfOne) =>
+      outbox.holdClaim({ id: claim.id, token: claim.token }),
+  ],
+  [
+    "release",
+    (outbox: Mailbox, claim: ClaimOfOne) =>
+      outbox.release({
+        attempts: claim.attempts,
+        errorClass: "timeout",
+        id: claim.id,
+        token: claim.token,
+      }),
+  ],
+] as const;
+
+/** Each operation that must not run inside a caller's transaction. */
+const standaloneCalls = [
+  [
+    "claimBatch",
+    (outbox: Mailbox) => outbox.claimBatch({ leaseMs: 1000, limit: 1 }),
+  ],
+  [
+    "claimById",
+    (outbox: Mailbox) => outbox.claimById({ id: "1", leaseMs: 1000 }),
+  ],
+  [
+    "cleanup",
+    (outbox: Mailbox) => outbox.cleanup({ limit: 1, olderThanMs: 0 }),
+  ],
+  ["counts", (outbox: Mailbox) => outbox.counts],
+  ["markQueued", (outbox: Mailbox) => outbox.markQueued({ ids: ["1"] })],
+  ["open", (outbox: Mailbox) => outbox.open({ limit: 1 })],
+  ["stale", (outbox: Mailbox) => outbox.stale({ limit: 1, olderThanMs: 0 })],
+] as const;
+
+/** The calls above return different effects: as one type they can be passed on. */
+const widen = (effect: Effect.Effect<unknown, SqlError>) => effect;
+
+/** The operation named by the defect that ended a run, or `undefined` when the run did not end in that defect. */
+const standaloneOperation = (
+  exit: Exit.Exit<unknown, unknown>
+): string | undefined => {
+  const cause = Exit.isFailure(exit) ? Cause.squash(exit.cause) : undefined;
+
+  return Schema.is(StandaloneInTransactionDefect)(cause)
+    ? cause.operation
+    : undefined;
+};
+
+const staleOperation = (
+  exit: Exit.Exit<unknown, unknown>
+): string | undefined => {
+  const cause = Exit.isFailure(exit) ? Cause.squash(exit.cause) : undefined;
+
+  return Schema.is(NotInTransactionDefect)(cause) ? cause.operation : undefined;
+};
 
 layer(tables)("the Effect adapter against PostgreSQL", (it) => {
   /** Every scenario starts on empty tables: they share one database, not their rows. */
@@ -243,6 +330,104 @@ layer(tables)("the Effect adapter against PostgreSQL", (it) => {
         assert.strictEqual(again._tag === "Claimed" ? again.attempts : 0, 2);
       }).pipe(Effect.provideService(OutboxClock, effectClock))
   );
+
+  scenario(
+    "the default clock is the database's: with the TestClock at 1970, a row is created now, by PostgreSQL's time",
+    () =>
+      Effect.gen(function* () {
+        const outbox = yield* make({ outbox: declaration });
+        const sql = yield* SqlClient.SqlClient;
+
+        yield* transaction(outbox.enqueue(mail));
+
+        const rows = yield* sql.unsafe<{ readonly recent: boolean }>(
+          "SELECT (created_at > now() - interval '1 minute') AS recent FROM outbox"
+        );
+
+        assert.deepStrictEqual(rows, [{ recent: true }]);
+      })
+  );
+
+  scenario(
+    "holdClaim, like enqueue, has the proof in its type, and a proof that outlived its transaction is a defect for it too",
+    () =>
+      Effect.gen(function* () {
+        const outbox = yield* withMessage;
+        const claim = yield* claimOne(outbox);
+        const hold = outbox.holdClaim({ id: claim.id, token: claim.token });
+
+        expectTypeOf<
+          Effect.Services<typeof hold>
+        >().toEqualTypeOf<InTransaction>();
+        expectTypeOf<Effect.Error<typeof hold>>().toEqualTypeOf<
+          ClaimLost | SqlError
+        >();
+
+        const stale = yield* transaction(Effect.service(InTransaction));
+
+        const exit = yield* Effect.exit(
+          Effect.provideService(hold, InTransaction, stale)
+        );
+
+        assert.strictEqual(staleOperation(exit), "holdClaim");
+        assert.strictEqual(
+          yield* transaction(hold.pipe(Effect.as("held"))),
+          "held"
+        );
+      })
+  );
+
+  scenario(
+    "every claim of a row that was lost rolls the caller's transaction back: ack, release, bury and holdClaim",
+    () =>
+      Effect.forEach(lostCalls, ([name, call]) =>
+        Effect.gen(function* () {
+          const sql = yield* SqlClient.SqlClient;
+
+          yield* sql.unsafe("TRUNCATE biz, outbox RESTART IDENTITY");
+
+          const outbox = yield* withMessage;
+          const claim = yield* claimOne(outbox);
+
+          // The claim is given back: its token is no longer the row's.
+          yield* outbox.release({
+            attempts: claim.attempts,
+            errorClass: "timeout",
+            id: claim.id,
+            token: claim.token,
+          });
+
+          const lost = yield* transaction(
+            Effect.gen(function* () {
+              yield* sql.unsafe("INSERT INTO biz (n) VALUES (9)");
+              yield* call(outbox, claim);
+            })
+          ).pipe(Effect.flip);
+
+          assert.strictEqual(lost._tag, "ClaimLost", name);
+          assert.strictEqual(
+            yield* counted("biz"),
+            0,
+            `${name} rolled the write back`
+          );
+        })
+      )
+  );
+
+  scenario(
+    "every claim, receipt, sweep, report and cleanup is a defect inside a transaction",
+    () =>
+      Effect.forEach(standaloneCalls, ([name, call]) =>
+        Effect.gen(function* () {
+          const outbox = yield* withMessage;
+
+          const exit = yield* Effect.exit(transaction(widen(call(outbox))));
+
+          assert.strictEqual(standaloneOperation(exit), name);
+          yield* widen(call(outbox));
+        })
+      )
+  );
 });
 
 /** The Hyperdrive client is built lazily: no connection is made until a statement runs. */
@@ -263,10 +448,24 @@ layer(behindHyperdrive)("the mode check", (it) => {
   );
 
   it.effect(
-    "a process that only enqueues is not refused; a claim brings its follow-up read with it; allowUnverified accepts",
+    "a process that only enqueues is refused too, with the gap of the recorded run; allowUnverified accepts it; a claim brings its follow-up read",
     () =>
       Effect.gen(function* () {
-        yield* make({ operations: ["enqueue"], outbox: declaration });
+        const enqueueOnly = yield* make({
+          operations: ["enqueue"],
+          outbox: declaration,
+        }).pipe(Effect.flip);
+
+        assert.strictEqual(enqueueOnly.support, "unverified");
+        assert.match(
+          enqueueOnly.message,
+          /concurrent DO NOTHING claim, with exactly one winner, was not run/u
+        );
+        yield* make({
+          allowUnverified: true,
+          operations: ["enqueue"],
+          outbox: declaration,
+        });
 
         const withClaim = yield* make({
           operations: ["claimById"],

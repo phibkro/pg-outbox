@@ -10,14 +10,19 @@ import type { Json } from "./results.ts";
 import { ProtocolError } from "./statement.ts";
 import type { RawRow } from "./statement.ts";
 
-/** `int` arrives as a number; `bigint` as text (node-postgres) or as a `bigint` (`@effect/sql-pg`), depending on the driver. */
+/**
+ * `int` arrives as a number; `bigint` as text (node-postgres) or as a `bigint` (`@effect/sql-pg`), depending on the driver.
+ * Every count of the protocol (attempts, milliseconds, a number of rows) is a JavaScript integer: a value above 2^53 - 1
+ * would lose digits in `Number`, so it is a `ProtocolError` and never a rounded number.
+ */
 const count = z.union([
   z.number().int(),
   z
     .string()
     .regex(/^-?\d+$/u)
-    .transform(Number),
-  z.bigint().transform(Number),
+    .transform(Number)
+    .refine(Number.isSafeInteger),
+  z.bigint().transform(Number).refine(Number.isSafeInteger),
 ]);
 
 const id = z.string().regex(/^\d{1,19}$/u);

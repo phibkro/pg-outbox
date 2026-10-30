@@ -64,7 +64,6 @@
         "vite-plus": "catalog:",
       },
       "peerDependencies": {
-        "@effect/sql-pg": ">=4.1.0 <4.2.0",
         "effect": ">=4.1.0 <4.2.0",
       },
     },

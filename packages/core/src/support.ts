@@ -220,20 +220,33 @@ export interface RequireOptions {
   readonly allowUnverified?: boolean;
 }
 
+/**
+ * The refusal of an operation, or `undefined` when the mode supports it (or it is unverified and the caller accepts that).
+ * A value, not a throw: an adapter that reports refusals in its own error channel reads it here, and `requireOperation`
+ * throws exactly this value.
+ */
+export const refusalOf = (
+  mode: ConnectionMode,
+  id: OperationId,
+  options: RequireOptions = {}
+): UnsupportedOperationError | undefined => {
+  const support = operationSupport(mode, id);
+
+  return support === "yes" ||
+    (support === "unverified" && options.allowUnverified === true)
+    ? undefined
+    : new UnsupportedOperationError(mode, id, support);
+};
+
 /** Throws `UnsupportedOperationError` unless the mode supports the operation (or it is unverified and the caller accepts that). */
 export const requireOperation = (
   mode: ConnectionMode,
   id: OperationId,
   options: RequireOptions = {}
 ): void => {
-  const support = operationSupport(mode, id);
+  const refusal = refusalOf(mode, id, options);
 
-  if (
-    support === "yes" ||
-    (support === "unverified" && options.allowUnverified === true)
-  ) {
-    return;
+  if (refusal !== undefined) {
+    throw refusal;
   }
-
-  throw new UnsupportedOperationError(mode, id, support);
 };

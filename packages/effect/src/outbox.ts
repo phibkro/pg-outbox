@@ -1,8 +1,4 @@
-import {
-  operationIds,
-  requireOperation,
-  UnsupportedOperationError,
-} from "@pg-outbox/core";
+import { operationIds, refusalOf } from "@pg-outbox/core";
 import type {
   WithoutClock,
   Buried,
@@ -16,6 +12,7 @@ import type {
   Outbox,
   OutboxId,
   RawRow,
+  UnsupportedOperationError,
   Released,
   Statement,
 } from "@pg-outbox/core";
@@ -138,24 +135,15 @@ export const make = <
     const client = yield* TxClient;
     const { outbox } = options;
 
-    yield* Effect.try({
-      catch: (error) =>
-        error instanceof UnsupportedOperationError
-          ? refusal(error)
-          : new OperationRefusedError({
-              message: String(error),
-              operation: "",
-              rows: [],
-              support: "no",
-            }),
-      try: () => {
-        for (const id of options.operations ?? operationIds) {
-          requireOperation(client.mode, id, {
-            allowUnverified: options.allowUnverified === true,
-          });
-        }
-      },
-    });
+    for (const id of options.operations ?? operationIds) {
+      const refused = refusalOf(client.mode, id, {
+        allowUnverified: options.allowUnverified === true,
+      });
+
+      if (refused !== undefined) {
+        return yield* refusal(refused);
+      }
+    }
 
     const isOpen = Effect.map(
       Effect.serviceOption(sql.transactionService),

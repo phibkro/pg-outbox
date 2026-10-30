@@ -63,6 +63,7 @@ export type { Param, RawRow, RawValue, Statement, Step } from "./statement.ts";
 
 export {
   operationSupport,
+  refusalOf,
   requireOperation,
   capCachedRead,
   coverageGaps,

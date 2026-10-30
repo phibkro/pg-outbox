@@ -263,4 +263,19 @@ describe("a driver's integers", () => {
       });
     }
   });
+
+  test("a count above 2^53 - 1 is a ProtocolError, as text or as a bigint, never a rounded number", () => {
+    const statement = outbox.claimById({ id, leaseMs: 1, now });
+    const step = statement.decode([]);
+
+    if (step.done) {
+      throw new Error("expected a follow-up statement");
+    }
+
+    for (const held of ["9007199254740993", 9_007_199_254_740_993n]) {
+      expect(() =>
+        step.next.decode([{ due_ms: 0, held_ms: held, status: "pending" }])
+      ).toThrow(ProtocolError);
+    }
+  });
 });
