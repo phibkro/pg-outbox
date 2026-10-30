@@ -19,15 +19,15 @@ It is deliberately not a queue runtime: no worker loop, no cron, no ordering, no
 ## Try it
 
 ```sh
-git clone --recurse-submodules https://github.com/phibkro/pg-outbox
+git clone https://github.com/phibkro/pg-outbox
 cd pg-outbox
-devenv shell -- bun install
+devenv shell -- bun install --frozen-lockfile
 devenv shell -- bun run ready           # every gate: lint, tests (conformance included), the model, build, knip, cpd, secrets
 devenv shell -- bun run model           # TLC: one line per case, the counterexamples as action names
 PG_OUTBOX_ROUNDS=300 devenv shell -- bash -c 'cd packages/conformance && bunx vp test run'
 ```
 
-`vendor/pg-txmode` is a git submodule pinned by commit: pg-txmode is not published yet, and a normal dependency replaces the submodule when it is (spec 0001 names the trigger).
+pg-txmode (`@pg-txmode/core`, `pg`, `effect`, `lint`, `harness`) comes from the npm registry at one exact alpha version, `0.1.0-alpha.1` (spec 0005; an alpha promises nothing between versions, so no range). There is no submodule.
 
 ## Roadmap
 

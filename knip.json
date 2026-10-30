@@ -38,6 +38,5 @@
   },
   "ignoreBinaries": ["gitleaks", "tlc"],
   "ignoreDependencies": ["vite"],
-  "ignoreWorkspaces": ["vendor/**"],
   "exclude": ["catalog"]
 }

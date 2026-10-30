@@ -22,15 +22,15 @@
       "name": "@pg-outbox/hyperdrive-probe",
       "version": "0.0.0",
       "dependencies": {
-        "@pg-txmode/core": "workspace:*",
+        "@pg-txmode/core": "0.1.0-alpha.1",
         "pg": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
         "@cloudflare/workers-types": "5.20261030.1",
         "@pg-outbox/conformance": "workspace:*",
-        "@pg-txmode/harness": "workspace:*",
-        "@pg-txmode/pg": "workspace:*",
+        "@pg-txmode/harness": "0.1.0-alpha.1",
+        "@pg-txmode/pg": "0.1.0-alpha.1",
         "@types/node": "catalog:",
         "@types/pg": "catalog:",
         "@types/ws": "8.18.2",
@@ -44,9 +44,9 @@
       "version": "0.0.0",
       "dependencies": {
         "@pg-outbox/core": "workspace:*",
-        "@pg-txmode/core": "workspace:*",
-        "@pg-txmode/harness": "workspace:*",
-        "@pg-txmode/lint": "workspace:*",
+        "@pg-txmode/core": "0.1.0-alpha.1",
+        "@pg-txmode/harness": "0.1.0-alpha.1",
+        "@pg-txmode/lint": "0.1.0-alpha.1",
         "vite-plus": "catalog:",
       },
       "devDependencies": {
@@ -58,7 +58,7 @@
       "name": "@pg-outbox/core",
       "version": "0.0.0",
       "dependencies": {
-        "@pg-txmode/core": "workspace:*",
+        "@pg-txmode/core": "0.1.0-alpha.1",
         "zod": "catalog:",
       },
       "devDependencies": {
@@ -72,13 +72,13 @@
       "version": "0.0.0",
       "dependencies": {
         "@pg-outbox/core": "workspace:*",
-        "@pg-txmode/effect": "workspace:*",
+        "@pg-txmode/effect": "0.1.0-alpha.1",
       },
       "devDependencies": {
         "@effect/sql-pg": "catalog:",
         "@effect/vitest": "catalog:",
         "@pg-outbox/conformance": "workspace:*",
-        "@pg-txmode/harness": "workspace:*",
+        "@pg-txmode/harness": "0.1.0-alpha.1",
         "@types/node": "catalog:",
         "effect": "catalog:",
         "typescript": "catalog:",
@@ -93,12 +93,12 @@
       "version": "0.0.0",
       "dependencies": {
         "@pg-outbox/core": "workspace:*",
-        "@pg-txmode/pg": "workspace:*",
+        "@pg-txmode/pg": "0.1.0-alpha.1",
       },
       "devDependencies": {
         "@pg-outbox/conformance": "workspace:*",
-        "@pg-txmode/core": "workspace:*",
-        "@pg-txmode/harness": "workspace:*",
+        "@pg-txmode/core": "0.1.0-alpha.1",
+        "@pg-txmode/harness": "0.1.0-alpha.1",
         "@types/node": "catalog:",
         "typescript": "catalog:",
         "vite-plus": "catalog:",
@@ -129,101 +129,17 @@
         "vite-plus": "catalog:",
       },
     },
-    "vendor/pg-txmode/packages/core": {
-      "name": "@pg-txmode/core",
-      "version": "0.0.0",
-      "devDependencies": {
-        "@types/node": "catalog:",
-        "typescript": "catalog:",
-        "vite-plus": "catalog:",
-      },
-    },
-    "vendor/pg-txmode/packages/effect": {
-      "name": "@pg-txmode/effect",
-      "version": "0.0.0",
-      "dependencies": {
-        "@pg-txmode/core": "workspace:*",
-      },
-      "devDependencies": {
-        "@effect/platform-node": "catalog:",
-        "@effect/sql-pg": "catalog:",
-        "@effect/vitest": "catalog:",
-        "@pg-txmode/harness": "workspace:*",
-        "@pg-txmode/pg": "workspace:*",
-        "@types/node": "catalog:",
-        "effect": "catalog:",
-        "typescript": "catalog:",
-        "vite-plus": "catalog:",
-      },
-      "peerDependencies": {
-        "@effect/sql-pg": ">=4.1.0 <4.2.0",
-        "effect": ">=4.1.0 <4.2.0",
-      },
-    },
-    "vendor/pg-txmode/packages/harness": {
-      "name": "@pg-txmode/harness",
-      "version": "0.0.0",
-      "bin": {
-        "pg-txmode-harness": "./src/cli.ts",
-      },
-      "dependencies": {
-        "@pg-txmode/core": "workspace:*",
-        "pg": "catalog:",
-      },
-      "devDependencies": {
-        "@pg-txmode/lint": "workspace:*",
-        "@types/node": "catalog:",
-        "@types/pg": "catalog:",
-        "typescript": "catalog:",
-        "vite-plus": "catalog:",
-      },
-    },
-    "vendor/pg-txmode/packages/lint": {
-      "name": "@pg-txmode/lint",
-      "version": "0.0.0",
-      "bin": {
-        "pg-txmode-lint": "./src/cli.ts",
-      },
-      "dependencies": {
-        "@pg-txmode/core": "workspace:*",
-        "libpg-query": "catalog:",
-        "oxc-parser": "catalog:",
-        "zod": "catalog:",
-      },
-      "devDependencies": {
-        "@types/node": "catalog:",
-        "typescript": "catalog:",
-        "vite-plus": "catalog:",
-      },
-    },
-    "vendor/pg-txmode/packages/pg": {
-      "name": "@pg-txmode/pg",
-      "version": "0.0.0",
-      "dependencies": {
-        "@pg-txmode/core": "workspace:*",
-        "pg": "catalog:",
-      },
-      "devDependencies": {
-        "@pg-txmode/harness": "workspace:*",
-        "@types/node": "catalog:",
-        "@types/pg": "catalog:",
-        "typescript": "catalog:",
-        "vite-plus": "catalog:",
-      },
-    },
   },
   "overrides": {
     "vite": "catalog:",
   },
   "catalog": {
-    "@effect/platform-node": "4.1.0",
     "@effect/sql-pg": "4.1.0",
     "@effect/tsgo": "0.63.0",
     "@effect/vitest": "4.1.0",
     "@types/node": "^26.6.5",
     "@types/pg": "8.23.1",
     "effect": "4.1.0",
-    "libpg-query": "18.2.1",
     "oxc-parser": "0.153.0",
     "pg": "8.23.1",
     "typescript": "7.0.2",
@@ -289,10 +205,6 @@
     "@conventional-changelog/git-client": ["@conventional-changelog/git-client@3.2.0", "", { "dependencies": { "@simple-libs/child-process-utils": "^2.0.0", "@simple-libs/stream-utils": "^2.0.0", "verkit": "^0.5.0" }, "peerDependencies": { "conventional-commits-filter": "^6.0.1", "conventional-commits-parser": "^7.1.3" }, "optionalPeers": ["conventional-commits-filter", "conventional-commits-parser"] }, "sha512-sD/E0vzpkoDz/dqM1Hhv0ihC4KBw6RXjefeO8SG1XrX+wGkMxe1pKeedkKDPCtr2JjuhbuS9aJNgOvnT8hbeBw=="],
 
     "@conventional-changelog/template": ["@conventional-changelog/template@1.4.0", "", {}, "sha512-aalGyl7dbB5PArRebDIX43ZvBlXrYm9uWzGJ26t+4SzJVPsOuvfILGGbw5X4yX7i50YEmJ8zvbiWnqH/AAnZqg=="],
-
-    "@effect/platform-node": ["@effect/platform-node@4.1.0", "", { "dependencies": { "@effect/platform-node-shared": "^4.1.0", "undici": "^8.12.2" }, "peerDependencies": { "effect": "^4.1.0", "redis": ">=5.0.0 <7.0.0" } }, "sha512-v+X7moGVF9k5oMVvz0slA+NgtEod+W+oygeI285MDJgSlUCW3JcqElj+cD3rlijFZtpKhC7RLkU1GuCxjGHTpA=="],
-
-    "@effect/platform-node-shared": ["@effect/platform-node-shared@4.1.0", "", { "dependencies": { "@types/ws": "^8.18.2", "ws": "^8.22.0" }, "peerDependencies": { "effect": "^4.1.0" } }, "sha512-uYQfFRoxWLo8fIhiSeBcmz/R1ooOfE3HF3cWHFgxz82tZMk2Wn02BGABcdLmaAch9VpDLbtWnuhSxNyBsGMUFg=="],
 
     "@effect/sql-pg": ["@effect/sql-pg@4.1.0", "", { "peerDependencies": { "effect": "^4.1.0" } }, "sha512-/Q1M2PEuk8eSLEmgjfvix1/WZTuRBxu75ZENbKkIh2J3c50dQb8NMFOGMPocMFlPFh5k4WUOUKZQcgXzBljTFA=="],
 
@@ -520,31 +432,21 @@
 
     "@pg-outbox/quality": ["@pg-outbox/quality@workspace:tools/quality"],
 
-    "@pg-txmode/core": ["@pg-txmode/core@workspace:vendor/pg-txmode/packages/core"],
+    "@pg-txmode/core": ["@pg-txmode/core@0.1.0-alpha.1", "", {}, "sha512-xnOTenudlXQ5dEEFCBP1RrDKHxqyI6Hi4LvOeTUTM1SPFw0pniR+eR8Mvg02fX9NmCVNnmny33v0yhl1hT0W5Q=="],
 
-    "@pg-txmode/effect": ["@pg-txmode/effect@workspace:vendor/pg-txmode/packages/effect"],
+    "@pg-txmode/effect": ["@pg-txmode/effect@0.1.0-alpha.1", "", { "dependencies": { "@pg-txmode/core": "0.1.0-alpha.1" }, "peerDependencies": { "@effect/sql-pg": ">=4.1.0 <4.2.0", "effect": ">=4.1.0 <4.2.0" } }, "sha512-Rhvr1WChNLkkN4ZyvLH9ILQ2hzPEpgHbnlvqhkpD+J9NV+gU6aWhGf+OpACZDy3KCqnlSEX6uPnu1rxaNUjsww=="],
 
-    "@pg-txmode/harness": ["@pg-txmode/harness@workspace:vendor/pg-txmode/packages/harness"],
+    "@pg-txmode/harness": ["@pg-txmode/harness@0.1.0-alpha.1", "", { "dependencies": { "@pg-txmode/core": "0.1.0-alpha.1", "@types/pg": "^8.23.1", "pg": "^8.23.1" }, "bin": { "pg-txmode-harness": "cli.mjs" } }, "sha512-2azeINALiLCV5HIbXvDzspS6jhVG+DJNpsEMglPXR+H3qYidiLCcGgAPodPek0rywO+jXfixK4NTijFpIT+AaA=="],
 
-    "@pg-txmode/lint": ["@pg-txmode/lint@workspace:vendor/pg-txmode/packages/lint"],
+    "@pg-txmode/lint": ["@pg-txmode/lint@0.1.0-alpha.1", "", { "dependencies": { "@pg-txmode/core": "0.1.0-alpha.1", "libpg-query": "^18.2.1", "oxc-parser": "^0.153.0", "zod": "^4.6.7" }, "bin": { "pg-txmode-lint": "cli.mjs" } }, "sha512-i2Fg/gVfrrbG2nigENMjmm34oF/XcOEY2tAW3PhT8GorLIH0oea25AyHxjbx5FhxtFy9Fp7oyl49H3XjF3vywA=="],
 
-    "@pg-txmode/pg": ["@pg-txmode/pg@workspace:vendor/pg-txmode/packages/pg"],
+    "@pg-txmode/pg": ["@pg-txmode/pg@0.1.0-alpha.1", "", { "dependencies": { "@pg-txmode/core": "0.1.0-alpha.1", "@types/pg": "^8.23.1", "pg": "^8.23.1" } }, "sha512-xxXNQtS051A4C0AqVUq9sXwaKCcm4jfjNK7YrZ6RQiHiybaThWBqNGwCdbZe+clwfQP+fsOyZoUACx6oGDlAAw=="],
 
     "@pgsql/types": ["@pgsql/types@18.0.0", "", {}, "sha512-jtAY4JU7jdVYZ/Vv3zlZqVP+FRWZokyCLKPPCnAApiaJAElpyyiMC3HRiquBu29kSrVs+rkqZD50SUIb/zyEGw=="],
 
     "@phibkro/oxlint-effect-plugin": ["@phibkro/oxlint-effect-plugin@0.2.0", "", { "dependencies": { "@effect/tsgo": "0.48.0", "oxc-parser": "0.95.0", "typescript": "7.0.2" }, "peerDependencies": { "oxlint": "^1.56.0" }, "optionalPeers": ["oxlint"], "bin": { "effx": "dist/cli.js" } }, "sha512-TGy5GwM1XZZFvXnPAzNBQRtdm42Yvyc/9O1SbzmKpNcz+6t20OssA6CW21vplZ27tT+lqnnirSz3oBebDd/35w=="],
 
     "@polka/url": ["@polka/url@1.0.0-next.29", "", {}, "sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww=="],
-
-    "@redis/bloom": ["@redis/bloom@6.3.1", "", { "peerDependencies": { "@redis/client": "^6.3.1" } }, "sha512-dpF9j2yJDoPzSCaZn0MSB3xzmnXQVJeTSAWJcQVcgbmluwhpFeemmII0cF1t+WYfoVS+shEFq79+MmUItgzJLg=="],
-
-    "@redis/client": ["@redis/client@6.3.1", "", { "peerDependencies": { "@node-rs/xxhash": "^1.1.0", "@opentelemetry/api": ">=1 <2" }, "optionalPeers": ["@node-rs/xxhash", "@opentelemetry/api"] }, "sha512-masbfVKULdoAofwddepZxRhWa4w6zvBHn6TRn90TRPrRkVIlGCur3pFqwWaCbMxtYI9twepkz63e/T/tEH8GjA=="],
-
-    "@redis/json": ["@redis/json@6.3.1", "", { "peerDependencies": { "@redis/client": "^6.3.1" } }, "sha512-fMz4kUwJzEftcU9EMaqsjZcUwzpTQLOYRqhQsAD6uKvZWeamblK13ZhgO5SzVSZVk31jmwLeTRpU5GAl5egfUw=="],
-
-    "@redis/search": ["@redis/search@6.3.1", "", { "peerDependencies": { "@redis/client": "^6.3.1" } }, "sha512-T67pvPUpW82VrZLvihO8O2DFMC7eY2oMAzMzapCbiPZn7mdWqHMEIlohYim12gIawT5kn6qT/Cvmm4WulKB+kQ=="],
-
-    "@redis/time-series": ["@redis/time-series@6.3.1", "", { "peerDependencies": { "@redis/client": "^6.3.1" } }, "sha512-MNDgrm+i63M/1a+XA+HcDsScwt4uBh/fGGJ84swTQZTFK5K5wMmxdlTRa4ZgmNJzjxMaszW/ipPScMUGV3aAMg=="],
 
     "@sec-ant/readable-stream": ["@sec-ant/readable-stream@0.4.1", "", {}, "sha512-831qok9r2t8AlxLko40y2ebgSDhenenCatLVeW/uBtnHPyhHOvG0C7TvfgecV+wHzIm5KUICgzmVpWS+IMEAeg=="],
 
@@ -848,7 +750,7 @@
 
     "knip": ["knip@6.41.0", "", { "dependencies": { "formatly": "^0.11.4", "get-tsconfig": "4.14.3", "jiti": "^2.7.0", "oxc-parser": "^0.153.0", "oxc-resolver": "11.24.2", "picomatch": "^4.0.7", "smol-toml": "^1.9.0", "strip-json-comments": "5.0.3", "tinyglobby": "^0.2.17", "unbash": "^5.0.0", "yaml": "^2.9.1", "zod": "^4.6.5" }, "bin": { "knip": "bin/knip.js", "knip-bun": "bin/knip-bun.js" } }, "sha512-DrhQlIuV6xScd5Q+WTF1znd1w41QzxFGCtAHXCajsH/ndGMotHoNYbdXbuFtzW3mIOmniHtZ7zCtvnQkUmJtQQ=="],
 
-    "libpg-query": ["libpg-query@18.2.1", "", { "dependencies": { "@pgsql/types": "^18.0.0" } }, "sha512-0zPlJei06//awjKmslKEwmGMSjF0n4p4OnPa3boRp8Xzl6ZnDIOddyLAsoJcJntrPCBLrWUbEwv5Laxg8BZYlA=="],
+    "libpg-query": ["libpg-query@18.2.2", "", { "dependencies": { "@pgsql/types": "^18.0.0" } }, "sha512-BOKY0X05vnxkFe+FD8JH71sSO560UKoSRv9Fsy67zapmryhqcew+4Hq0Phu8a6mcENklK7LiHJi0d0j8DbIb4A=="],
 
     "lightningcss": ["lightningcss@1.33.0", "", { "dependencies": { "detect-libc": "^2.0.3" }, "optionalDependencies": { "lightningcss-android-arm64": "1.33.0", "lightningcss-darwin-arm64": "1.33.0", "lightningcss-darwin-x64": "1.33.0", "lightningcss-freebsd-x64": "1.33.0", "lightningcss-linux-arm-gnueabihf": "1.33.0", "lightningcss-linux-arm64-gnu": "1.33.0", "lightningcss-linux-arm64-musl": "1.33.0", "lightningcss-linux-x64-gnu": "1.33.0", "lightningcss-linux-x64-musl": "1.33.0", "lightningcss-win32-arm64-msvc": "1.33.0", "lightningcss-win32-x64-msvc": "1.33.0" } }, "sha512-WkUDrojuJs0xkgGf2udWxa3yGBRxPtxUkB79i6aCZLRgc7PM8fZe9TosfPDcvEpQZbuFASnHYmRLBLUbmLOIIA=="],
 
@@ -970,8 +872,6 @@
 
     "react-is": ["react-is@17.0.2", "", {}, "sha512-w2GsyukL62IJnlaff/nRegPQR94C/XXamvMWmSHRJ4y7Ts/4ocGRmTHvOs8PSE6pB3dWOrD/nueuU5sduBsQ4w=="],
 
-    "redis": ["redis@6.3.1", "", { "dependencies": { "@redis/bloom": "6.3.1", "@redis/client": "6.3.1", "@redis/json": "6.3.1", "@redis/search": "6.3.1", "@redis/time-series": "6.3.1" } }, "sha512-mV96ZKxQ4CGn3SyEGaY0Lb9YA443mdVey3c+mdr0NAUaBxiOZGoYCWX8PoM55kictSOmxlJRtZJxIsmZm3jL+w=="],
-
     "require-from-string": ["require-from-string@2.0.2", "", {}, "sha512-Xf0nWe6RseziFMu+Ap9biiUbmplq6S9/p+7w7YXP/JBHhrUDDUhwa+vANyubuqfZWTveU//DYVGsDG7RKL/vEw=="],
 
     "resolve-from": ["resolve-from@5.0.0", "", {}, "sha512-qYg9KP24dD5qka9J47d0aVky0N+b4fTU89LN9iDnjB5waksiC49rvMB0PrUJQGoTmH50XPiqOvAjDfaijGxYZw=="],
@@ -1035,8 +935,6 @@
     "ultracite": ["ultracite@8.0.1", "", { "dependencies": { "@clack/prompts": "^1.8.1", "cli-truncate": "^6.1.1", "commander": "^15.0.0", "deepmerge": "^4.3.1", "empathic": "^2.1.0", "execa": "^10.0.1", "fast-glob": "^3.3.3", "find-workspaces": "^0.3.1", "jsonc-parser": "^3.3.1", "log-update": "^8.0.0", "magicast": "^0.5.5", "npm-run-path": "^6.0.0", "nypm": "^0.6.10", "resolve.exports": "^2.0.3", "semver": "^7.8.5", "string-width": "^8.3.0", "which-command": "^0.1.0", "yaml": "^2.9.1", "zod": "^4.6.5" }, "peerDependencies": { "@biomejs/biome": "^2.5.0", "eslint": "^10.9.0", "oxfmt": ">=0.71.0 <1", "oxlint": "^1.86.0", "prettier": "^3.5.3", "stylelint": "^17.0.0" }, "optionalPeers": ["@biomejs/biome", "eslint", "oxfmt", "oxlint", "prettier", "stylelint"], "bin": { "ultracite": "dist/index.js" } }, "sha512-4XtB3My7o/O8uveSBPjMO6aPwkO7LEGDf2RCuR4jMVSJ4JByLNIb8+xpCR5M+HssgPrl0aSTQ/40od80ItmiqQ=="],
 
     "unbash": ["unbash@5.1.0", "", {}, "sha512-YVGyy4XqoZ2AVgHjVdL9cchMSurlXFHWviORa8RiU/Bnol4ooW5Lpyur/5XmbgDdyCKxymmgsEQsLGBMIJ/Agg=="],
-
-    "undici": ["undici@8.12.3", "", {}, "sha512-+fdndUTwBP86cVjihTp21hZHo7d6oj1c/47XPA3lL8mM0XHs+C4EkcjmgRsFnFk2f/UONGDy9ItBItmXsLOQHw=="],
 
     "undici-types": ["undici-types@8.9.0", "", {}, "sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg=="],
 

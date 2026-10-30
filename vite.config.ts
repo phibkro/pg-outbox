@@ -55,18 +55,14 @@ export default defineConfig({
   // Prose is written by hand: Oxfmt re-wraps Markdown and joins hard line breaks, which changes meaning.
   fmt: {
     ...ultraciteFmt,
-    ignorePatterns: [
-      ...(ultraciteFmt.ignorePatterns ?? []),
-      "**/*.md",
-      "vendor/**",
-    ],
+    ignorePatterns: [...(ultraciteFmt.ignorePatterns ?? []), "**/*.md"],
   },
   lint: {
     extends: [core, antiSlop],
     // `apps/*/deploy/` is a stack of its own, outside the workspace, with its own manifest and lockfile (spec 0004: Alchemy's
     // installed version needs another Effect version). `bun install` at the root does not install it, so type-aware lint
     // sees every import as an error type there; the stack file is formatted but not linted, and it type-checks where it is installed.
-    ignorePatterns: ["vendor/**", "apps/*/deploy/**"],
+    ignorePatterns: ["apps/*/deploy/**"],
     jsPlugins: [
       { name: "vite-plus", specifier: "vite-plus/oxlint-plugin" },
       { name: "complexity", specifier: "oxlint-plugin-complexity" },

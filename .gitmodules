@@ -1,3 +1,0 @@
-[submodule "vendor/pg-txmode"]
-	path = vendor/pg-txmode
-	url = https://github.com/phibkro/pg-txmode.git
