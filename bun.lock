@@ -57,7 +57,7 @@
     },
     "packages/core": {
       "name": "@pg-outbox/core",
-      "version": "0.0.0",
+      "version": "0.1.0-alpha.1",
       "dependencies": {
         "@pg-txmode/core": "0.1.0-alpha.1",
         "zod": "catalog:",
@@ -70,7 +70,7 @@
     },
     "packages/effect": {
       "name": "@pg-outbox/effect",
-      "version": "0.0.0",
+      "version": "0.1.0-alpha.1",
       "dependencies": {
         "@pg-outbox/core": "workspace:*",
         "@pg-txmode/effect": "0.1.0-alpha.1",
@@ -91,7 +91,7 @@
     },
     "packages/pg": {
       "name": "@pg-outbox/pg",
-      "version": "0.0.0",
+      "version": "0.1.0-alpha.1",
       "dependencies": {
         "@pg-outbox/core": "workspace:*",
         "@pg-txmode/pg": "0.1.0-alpha.1",
