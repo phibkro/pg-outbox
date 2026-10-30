@@ -63,7 +63,10 @@ export default defineConfig({
   },
   lint: {
     extends: [core, antiSlop],
-    ignorePatterns: ["vendor/**"],
+    // `apps/*/deploy/` is a stack of its own, outside the workspace, with its own manifest and lockfile (spec 0004: Alchemy's
+    // installed version needs another Effect version). `bun install` at the root does not install it, so type-aware lint
+    // sees every import as an error type there; the stack file is formatted but not linted, and it type-checks where it is installed.
+    ignorePatterns: ["vendor/**", "apps/*/deploy/**"],
     jsPlugins: [
       { name: "vite-plus", specifier: "vite-plus/oxlint-plugin" },
       { name: "complexity", specifier: "oxlint-plugin-complexity" },
