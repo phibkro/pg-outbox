@@ -32,6 +32,20 @@ describe("the clock is an explicit argument of every statement", () => {
     expect(strayClocks(outbox.sql)).toStrictEqual([]);
   });
 
+  test("the migration reads no clock either: no column defaults to the database's time", () => {
+    expect(
+      strayClocks(
+        Object.fromEntries(
+          outbox.migration.map((statement, index) => [
+            `migration ${index + 1}`,
+            statement,
+          ])
+        )
+      )
+    ).toStrictEqual([]);
+    expect(outbox.migration.length).toBeGreaterThan(0);
+  });
+
   test("control: a bare now(), a bare statement_timestamp() and a clock inside the fallback's rival are found", () => {
     expect(
       strayClocks({
@@ -39,8 +53,9 @@ describe("the clock is an explicit argument of every statement", () => {
         b: "UPDATE t SET at = statement_timestamp()",
         c: "UPDATE t SET at = COALESCE($1::timestamptz, statement_timestamp())",
         d: "UPDATE t SET at = CURRENT_TIMESTAMP",
+        e: "CREATE TABLE t (at timestamptz NOT NULL DEFAULT now())",
       })
-    ).toStrictEqual(["a", "b", "d"]);
+    ).toStrictEqual(["a", "b", "d", "e"]);
   });
 
   test("only holdClaim has no time: every other statement takes the `now` argument", () => {

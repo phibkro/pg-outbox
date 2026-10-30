@@ -20,6 +20,10 @@ const dueDate = new RegExp(` AND next_attempt_at <= ${instantPattern}`, "gu");
 
 const classIsOnRecord = / AND COALESCE\(\$3::text, last_error\) IS NOT NULL/gu;
 
+const attemptsUsedUp = /\(attempts >= \$5::int AND /gu;
+
+const retryDelay = / \+ \$4::float8 \* interval '1 millisecond'/gu;
+
 /** Claims the row at `ms` and gives the claim back: with the class a provider produced, or with none. */
 const failAt = async (
   subject: Subject,
@@ -140,6 +144,29 @@ export const failureClasses: Falsifier = {
       },
     },
     {
+      describe:
+        "ending a row by the class alone: the first failure with a class burns it before the declared attempts are used",
+      id: "release-no-attempts-rule",
+      mutation: {
+        kind: "statement",
+        operation: "release",
+        rewrite: replacing(attemptsUsedUp, "($5::int IS NOT NULL AND "),
+      },
+    },
+    {
+      describe:
+        "a release that ignores the retry delay makes the row due at once",
+      id: "release-no-delay",
+      mutation: {
+        kind: "statement",
+        operation: "release",
+        rewrite: replacing(
+          retryDelay,
+          " + $4::float8 * interval '0 millisecond'"
+        ),
+      },
+    },
+    {
       describe: "claimById without the retry date takes a row that is not due",
       id: "claimById-no-due-date",
       mutation: {
@@ -231,6 +258,34 @@ export const dedupe: Falsifier = {
         ],
       },
     },
+    {
+      describe:
+        "a unique index over pending rows only: a delivered row frees its key before cleanup, against the stated window",
+      id: "dedupe-pending-only",
+      mutation: {
+        kind: "all",
+        of: [
+          {
+            kind: "migration",
+            rewrite: (statements) =>
+              statements.map((statement) =>
+                statement.replace(
+                  "WHERE dedupe_key IS NOT NULL",
+                  "WHERE dedupe_key IS NOT NULL AND status = 'pending'"
+                )
+              ),
+          },
+          {
+            kind: "statement",
+            operation: "enqueue",
+            rewrite: replacing(
+              "WHERE dedupe_key IS NOT NULL",
+              "WHERE dedupe_key IS NOT NULL AND status = 'pending'"
+            ),
+          },
+        ],
+      },
+    },
   ],
   id: "F14",
   run: async ({ subject }) => {
@@ -260,6 +315,30 @@ export const dedupe: Falsifier = {
       "Enqueued"
     );
     expect(await count(subject, table)).toBe(4);
+
+    // The unique index covers every row: a delivered row keeps its key until `cleanup` deletes it.
+    const windowed = await send("Mail", "window:1");
+
+    if (windowed._tag !== "Enqueued") {
+      throw new Error("the first message of a key must be stored");
+    }
+
+    const claim = await claimAt(subject, windowed.id);
+
+    expect(
+      await subject.ack({ id: windowed.id, now: at(10), token: claim.token })
+    ).toStrictEqual({ _tag: "Delivered" });
+    expect(
+      await send("Mail", "window:1"),
+      "a delivered row still holds its key"
+    ).toStrictEqual({ _tag: "Duplicate" });
+    expect(
+      await subject.cleanup({ limit: 10, now: at(5000), olderThanMs: 1000 })
+    ).toBe(1);
+    expect(
+      await tagOf(send("Mail", "window:1")),
+      "after the cleanup the key is free"
+    ).toBe("Enqueued");
   },
   title: "a duplicate (kind, dedupe key) stores one row and answers Duplicate",
 };

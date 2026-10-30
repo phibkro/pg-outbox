@@ -77,21 +77,22 @@ interface Result {
   readonly line: string;
 }
 
-const run = (model: ModelCase): Result => {
-  const config = path.join(out, `${model.id}.cfg`);
+/** One TLC run of a configuration. The small cases run on one worker: their state counts and traces then reproduce. */
+const check = (name: string, config: string, threads: string): Finding => {
+  const file = path.join(out, `${name}.cfg`);
 
-  writeFileSync(config, configOf(cases, model));
+  writeFileSync(file, config);
 
   const result = spawnSync(
     "tlc",
     [
       "-workers",
-      workers,
+      threads,
       "-deadlock",
       "-metadir",
-      path.join(out, `${model.id}.states`),
+      path.join(out, `${name}.states`),
       "-config",
-      config,
+      file,
       "ClaimFence.tla",
     ],
     {
@@ -103,14 +104,37 @@ const run = (model: ModelCase): Result => {
 
   const output = `${result.stdout}\n${result.stderr}`;
 
-  writeFileSync(path.join(out, `${model.id}.out`), output);
+  writeFileSync(path.join(out, `${name}.out`), output);
 
-  const found = readFinding(output);
+  return readFinding(output);
+};
+
+const run = (model: ModelCase): Result => {
+  const found = check(
+    model.id,
+    configOf(cases, model),
+    model.kind === "holds" ? workers : "1"
+  );
+
+  // A broken variant is also run with every invariant of the model: the first one TLC reports, on the shortest
+  // counterexample, must be the one the case names. (Other invariants may fail on a longer trace: this is not "only".)
+  const every =
+    model.kind === "broken"
+      ? check(`${model.id}-every`, configOf(cases, model, { every: true }), "1")
+      : undefined;
 
   const ok =
-    model.kind === "holds" ? found.clean : found.violated === model.violates;
+    model.kind === "holds"
+      ? found.clean
+      : found.violated === model.violates &&
+        (every === undefined || every.violated === model.violates);
 
   const what = found.clean ? "no error" : `violates ${found.violated ?? "?"}`;
+
+  const first =
+    every === undefined
+      ? ""
+      : `; with every invariant: first is ${every.violated ?? "none"}`;
 
   const trace =
     model.kind === "holds" || found.steps.length === 0
@@ -118,7 +142,7 @@ const run = (model: ModelCase): Result => {
       : `  trace: ${found.steps.join(" -> ")}`;
 
   return {
-    line: `${ok ? "ok  " : "FAIL"} ${model.id.padEnd(24)} expected ${expectation(model).padEnd(36)} found ${what} (${found.states} states)${trace}`,
+    line: `${ok ? "ok  " : "FAIL"} ${model.id.padEnd(24)} expected ${expectation(model).padEnd(36)} found ${what} (${found.states} states${first})${trace}`,
     ok,
   };
 };

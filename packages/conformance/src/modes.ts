@@ -186,8 +186,10 @@ const poolers: readonly ConnectionMode[] = [
   pgBouncer(0),
   pgBouncer(1000),
   neonPooler,
-  supavisor,
 ];
+
+/** The modes where nothing of this library ran: the evidence is another mode's or another use's. */
+const unmeasured: readonly ConnectionMode[] = [hyperdrive, supavisor];
 
 const uncachedCall = (text: string): boolean =>
   uncachedFunctions.some((name) => text.includes(`${name}(`));
@@ -217,22 +219,27 @@ export const modeCheck: Falsifier = {
       }
     }
 
-    // Hyperdrive: only enqueue rests on a row that is documented to work through it (`on-conflict`); everything else is
-    // unverified, so it is refused unless the caller accepts that. Nothing was run through Hyperdrive.
-    for (const id of operationIds) {
-      const expected = id === "enqueue" ? "yes" : "unverified";
-
-      expect(operationSupport(hyperdrive, id), `${id} on hyperdrive`).toBe(
-        expected
-      );
-
-      if (expected === "unverified") {
-        expect(() => {
-          requireOperation(hyperdrive, id);
-        }, `${id} refused by default`).toThrow(UnsupportedOperationError);
-        expect(() => {
-          requireOperation(hyperdrive, id, { allowUnverified: true });
-        }, `${id} accepted on request`).not.toThrow();
+    // Hyperdrive and Supavisor: nothing was run through either (Hyperdrive's recorded run did not cover a concurrent
+    // `ON CONFLICT DO NOTHING`; Supavisor's cells are PgBouncer's), so every operation is unverified and refused unless
+    // the caller accepts that.
+    for (const mode of unmeasured) {
+      for (const id of operationIds) {
+        expect(
+          operationSupport(mode, id),
+          `${id} on ${JSON.stringify(mode)}`
+        ).toBe("unverified");
+        expect(
+          () => {
+            requireOperation(mode, id);
+          },
+          `${id} refused by default on ${JSON.stringify(mode)}`
+        ).toThrow(UnsupportedOperationError);
+        expect(
+          () => {
+            requireOperation(mode, id, { allowUnverified: true });
+          },
+          `${id} accepted on request on ${JSON.stringify(mode)}`
+        ).not.toThrow();
       }
     }
 
@@ -247,5 +254,5 @@ export const modeCheck: Falsifier = {
     ).toStrictEqual([]);
   },
   title:
-    "the mode check: PgBouncer and direct accept every operation, Hyperdrive refuses what is unverified, every read calls an uncached function",
+    "the mode check: PgBouncer and direct accept every operation, Hyperdrive and Supavisor refuse every one as unverified, every read calls an uncached function",
 };

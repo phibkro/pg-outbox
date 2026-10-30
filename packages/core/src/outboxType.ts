@@ -36,6 +36,11 @@ export interface Outbox<
   readonly enqueue: (args: {
     readonly kind: Kind;
     readonly payload: Json;
+    /**
+     * Messages with the same `kind` and `dedupeKey` are stored once: the second is `Duplicate`. The unique index covers every
+     * row of the table, so a delivered or dead row keeps blocking its key **until `cleanup` deletes it**; a key can be reused
+     * only after the retention window.
+     */
     readonly dedupeKey?: string | undefined;
     readonly now: Now;
   }) => Statement<EnqueueResult>;
@@ -57,6 +62,11 @@ export interface Outbox<
   readonly release: (args: {
     readonly id: string;
     readonly token: string;
+    /**
+     * The `attempts` of the claim being released: the number `claimById` or `claimBatch` returned. It only picks the delay
+     * from the declared list (`retryDelayMs`); whether the row ends is decided by the row's own `attempts`, which the token
+     * ties to this claim (a token is unique to one claim), so the two are the same number unless the caller passes another.
+     */
     readonly attempts: number;
     readonly errorClass?: ErrorClass | undefined;
     readonly retryAfterMs?: number | undefined;

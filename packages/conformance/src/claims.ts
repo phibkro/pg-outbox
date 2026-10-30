@@ -369,6 +369,19 @@ export const hold: Falsifier = {
         rewrite: replacing(" FOR NO KEY UPDATE", ""),
       },
     },
+    {
+      describe:
+        "a hold without the token condition holds whoever's claim it is: a stale hold says Holding",
+      id: "hold-no-token",
+      mutation: {
+        kind: "statement",
+        operation: "holdClaim",
+        rewrite: replacing(
+          " AND claim_token = $2::uuid",
+          " AND $2::uuid IS NOT NULL"
+        ),
+      },
+    },
   ],
   id: "F4",
   run: async (env) => {

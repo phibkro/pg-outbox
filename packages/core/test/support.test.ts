@@ -6,12 +6,15 @@ import {
   neonPooler,
   pgBouncer,
   featureRows,
+  rowById,
+  supavisor,
 } from "@pg-txmode/core";
 import type { Feature } from "@pg-txmode/core";
 import { describe, expect, test } from "vite-plus/test";
 
 import {
   capCachedRead,
+  coverageGaps,
   operationIds,
   operationSupport,
   operations,
@@ -21,13 +24,16 @@ import {
 } from "../src/index.ts";
 
 describe("the mode check", () => {
-  test("every operation is supported on direct and on PgBouncer, and unverified on Hyperdrive except enqueue", () => {
+  test("direct and PgBouncer support every operation; Hyperdrive and Supavisor, where nothing ran, say unverified for every one", () => {
     for (const id of operationIds) {
-      expect(operationSupport(direct, id)).toBe("yes");
-      expect(operationSupport(pgBouncer(0), id)).toBe("yes");
-      expect(operationSupport(neonPooler, id)).toBe("yes");
-      expect(operationSupport(hyperdrive, id)).toBe(
-        id === "enqueue" ? "yes" : "unverified"
+      expect(operationSupport(direct, id), `${id} direct`).toBe("yes");
+      expect(operationSupport(pgBouncer(0), id), `${id} pgbouncer`).toBe("yes");
+      expect(operationSupport(neonPooler, id), `${id} neon`).toBe("yes");
+      expect(operationSupport(hyperdrive, id), `${id} hyperdrive`).toBe(
+        "unverified"
+      );
+      expect(operationSupport(supavisor, id), `${id} supavisor`).toBe(
+        "unverified"
       );
     }
   });
@@ -42,6 +48,56 @@ describe("the mode check", () => {
     expect(() => {
       requireOperation(hyperdrive, "claimBatch", { allowUnverified: true });
     }).not.toThrow();
+  });
+
+  test("enqueue on Hyperdrive is refused for what the recorded run did not cover, and says so", () => {
+    expect(() => {
+      requireOperation(hyperdrive, "enqueue");
+    }).toThrow(
+      /concurrent DO NOTHING claim, with exactly one winner, was not run/u
+    );
+    expect(() => {
+      requireOperation(hyperdrive, "enqueue", { allowUnverified: true });
+    }).not.toThrow();
+  });
+
+  test("a Supavisor refusal says that the cell is the measured PgBouncer's and that no run was made on it", () => {
+    expect(() => {
+      requireOperation(supavisor, "claimById");
+    }).toThrow(
+      /inherited by a transaction-pooled \(supavisor\) connection, where no run was made/u
+    );
+  });
+
+  test("every coverage gap names a sentence that the catalogue's note still holds", () => {
+    expect(coverageGaps.length).toBeGreaterThan(0);
+
+    for (const gap of coverageGaps) {
+      expect(cellOf(gap.mode, gap.row).note, gap.row).toContain(gap.phrase);
+    }
+  });
+
+  test("the rows the operations rest on have no cell of Supavisor's own, and none is `works` without being documented or measured", () => {
+    const rows = new Set(operations.flatMap((operation) => operation.rows));
+
+    for (const row of rows) {
+      expect(cellOf(supavisor, row), `${row} on supavisor`).toBe(
+        rowById(row).transactionPooled
+      );
+
+      for (const column of [
+        "direct",
+        "transactionPooled",
+        "hyperdrive",
+      ] as const) {
+        const cell = rowById(row)[column];
+
+        expect(
+          cell.outcome === "works" && cell.verifiedBy === "unverified",
+          `${row} ${column}`
+        ).toBe(false);
+      }
+    }
   });
 
   test("a read behind a read cache is unverified at best, however well documented its rows are", () => {

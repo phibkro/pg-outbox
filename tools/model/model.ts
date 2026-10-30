@@ -53,8 +53,15 @@ export const readCases = (root: string): Cases =>
     JSON.parse(readFileSync(path.join(root, "model/cases.json"), "utf-8"))
   );
 
-/** The configuration file of one case: its constants, its switches and the invariant(s) it checks. */
-export const configOf = (cases: Cases, model: ModelCase): string => {
+/**
+ * The configuration file of one case: its constants, its switches and the invariant(s) it checks. A broken case checks the
+ * invariant it names alone, or with `every` every invariant of the model (TLC then reports the first one it finds).
+ */
+export const configOf = (
+  cases: Cases,
+  model: ModelCase,
+  options: { readonly every?: boolean } = {}
+): string => {
   const rules = new Map<string, boolean | undefined>(
     Object.entries(cases.rules)
   );
@@ -66,7 +73,10 @@ export const configOf = (cases: Cases, model: ModelCase): string => {
   }
 
   const invariants =
-    model.kind === "holds" ? cases.invariants : [model.violates];
+    model.kind === "holds" ||
+    (model.kind === "broken" && options.every === true)
+      ? cases.invariants
+      : [model.violates];
 
   return [
     "SPECIFICATION Spec",
