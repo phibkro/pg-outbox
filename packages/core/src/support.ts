@@ -1,4 +1,13 @@
-import { capabilities, cellOf, describeMode, rowById } from "@pg-txmode/core";
+import {
+  capabilities,
+  cellOf,
+  columnOf,
+  describeMode,
+  hyperdrive,
+  neonPooler,
+  pgBouncer,
+  rowById,
+} from "@pg-txmode/core";
 import type { ConnectionMode, RowId, Support } from "@pg-txmode/core";
 
 import { operationById } from "./operations.ts";
@@ -23,15 +32,87 @@ const rank: Readonly<Record<Support, number>> = {
   yes: 2,
 };
 
-/** The weakest of the cells that an operation rests on, in the mode's column. */
-export const rowSupport = (
+/**
+ * A use of a catalogue row that the cell's recorded run did not cover, so the cell's `works` does not vouch for it. The
+ * catalogue says so in the cell's note (prose); `phrase` is that sentence, and a test fails when the note no longer holds
+ * it, so the gap is read again the day the catalogue changes. `enqueue` is a concurrent `ON CONFLICT DO NOTHING` whose
+ * exactly-one-winner is the deduplication; through Hyperdrive only the sequential form and a concurrent `DO UPDATE` ran.
+ */
+export interface CoverageGap {
+  /** The mode whose column holds the cell (the catalogue's column of this mode). */
+  readonly mode: ConnectionMode;
+  readonly row: RowId;
+  readonly operation: OperationId;
+  readonly phrase: string;
+}
+
+export const coverageGaps: readonly CoverageGap[] = [
+  {
+    mode: hyperdrive,
+    operation: "enqueue",
+    phrase:
+      "A concurrent DO NOTHING claim, with exactly one winner, was not run through Hyperdrive.",
+    row: "on-conflict",
+  },
+];
+
+/** The modes whose transaction-pooled cells were measured: PgBouncer, and Neon's pooler, which is PgBouncer with its settings. */
+const measuredPoolers: ReadonlySet<string> = new Set([
+  describeMode(pgBouncer(0)),
+  describeMode(neonPooler),
+]);
+
+/**
+ * The transaction-pooled column is PgBouncer's; other poolers inherit it except for the few cells the catalogue gives them.
+ * A cell that such a pooler inherits was measured on PgBouncer, not on it. Read from the catalogue's data (the mode's
+ * description and the cell itself), so that no pooler is named here.
+ */
+const inheritedFromMeasured = (mode: ConnectionMode, row: RowId): boolean =>
+  mode.kind === "TransactionPooled" &&
+  !measuredPoolers.has(describeMode(mode)) &&
+  cellOf(mode, row) === rowById(row).transactionPooled;
+
+/**
+ * Why the mode's cell for `row`, though it may say `works`, does not vouch for `id` (`undefined` when it does): the cell was
+ * measured on another pooler (Supavisor inherits PgBouncer's, and no Supavisor ran), or the recorded run did not cover this
+ * use of the row. Only evidence for this mode and this use counts; everything else is `unverified`.
+ */
+const gapOf = (
   mode: ConnectionMode,
-  rows: readonly RowId[]
+  id: OperationId,
+  row: RowId
+): string | undefined => {
+  if (inheritedFromMeasured(mode, row)) {
+    return `the cell is the measured PgBouncer's, inherited by a ${describeMode(mode)} connection, where no run was made`;
+  }
+
+  return coverageGaps.find(
+    (gap) =>
+      columnOf(gap.mode) === columnOf(mode) &&
+      gap.row === row &&
+      gap.operation === id
+  )?.phrase;
+};
+
+/** What one cell lets the operation do: its outcome, and `unverified` at best where the evidence is not for this mode and use. */
+const cellSupport = (
+  mode: ConnectionMode,
+  id: OperationId,
+  row: RowId
 ): Support => {
+  const support = supportOfOutcome(cellOf(mode, row).outcome);
+
+  return gapOf(mode, id, row) !== undefined && rank[support] > rank.unverified
+    ? "unverified"
+    : support;
+};
+
+/** The weakest of the cells that an operation rests on, in the mode's column. */
+export const rowSupport = (mode: ConnectionMode, id: OperationId): Support => {
   let weakest: Support = "yes";
 
-  for (const row of rows) {
-    const support = supportOfOutcome(cellOf(mode, row).outcome);
+  for (const row of operationById(id).rows) {
+    const support = cellSupport(mode, id, row);
 
     if (rank[support] < rank[weakest]) {
       weakest = support;
@@ -55,19 +136,19 @@ export const capCachedRead = (
     ? "unverified"
     : support;
 
-/** What the mode lets an operation do: the weakest cell of its catalogue rows, capped for a read behind a cache. */
+/**
+ * What the mode lets an operation do: the weakest cell of its catalogue rows that is evidence for this mode and this use,
+ * capped for a read behind a cache.
+ */
 export const operationSupport = (
   mode: ConnectionMode,
   id: OperationId
-): Support => {
-  const operation = operationById(id);
-
-  return capCachedRead(
-    rowSupport(mode, operation.rows),
-    operation.reads,
+): Support =>
+  capCachedRead(
+    rowSupport(mode, id),
+    operationById(id).reads,
     capabilities(mode).cachesReads
   );
-};
 
 /** The mode cannot honour the operation, or the catalogue has not verified it there. The message quotes the catalogue. */
 export class UnsupportedOperationError extends Error {
@@ -82,8 +163,9 @@ export class UnsupportedOperationError extends Error {
     const cells = rows
       .map((row) => {
         const cell = cellOf(mode, row);
+        const gap = gapOf(mode, id, row);
 
-        return `${row}: ${cell.outcome} (${cell.note}; ${rowById(row).sources.join(", ")})`;
+        return `${row}: ${cell.outcome} (${cell.note}; ${rowById(row).sources.join(", ")})${gap === undefined ? "" : `; not vouched for here: ${gap}`}`;
       })
       .join("; ");
 

@@ -130,6 +130,21 @@ describe("every broken variant has the SQL control that makes the same defect", 
     expect(invariants(broken)).toHaveLength(1);
     expect(configOf(cases, broken)).toContain("= FALSE");
   });
+
+  test("a broken variant is also checked with every invariant, and the one it names is among them", () => {
+    for (const model of cases.cases) {
+      if (model.kind === "broken") {
+        const every = configOf(cases, model, { every: true })
+          .split("\n")
+          .filter((line) => line.startsWith("INVARIANT "));
+
+        expect(every, model.id).toStrictEqual(
+          cases.invariants.map((name) => `INVARIANT ${name}`)
+        );
+        expect(cases.invariants, model.id).toContain(model.violates);
+      }
+    }
+  });
 });
 
 describe("the model is confirmed against the code it covers", () => {

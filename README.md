@@ -9,7 +9,7 @@ A narrow, client-neutral **PostgreSQL outbox** that writes a message in your bus
 The protocol is stated once (SQL, a formal model, a conformance suite) and adapters are thin:
 
 - a **core** (`@pg-outbox/core`) with no driver and no Effect: the table and its migration, the claim / fence / hold / ack / release / bury statements as data with typed answers (`ClaimLost` is a case you must handle, never an empty result), the retry policy as data, and the mode check against the [pg-txmode](https://github.com/phibkro/pg-txmode) catalogue. Every statement takes its clock as an argument (`databaseNow` or `fixedNow`);
-- a **conformance suite** (`@pg-outbox/conformance`) that runs 14 falsifiers on PostgreSQL directly and behind PgBouncer in transaction mode, with 22 negative controls (deliberate defects) that must each make a falsifier fail;
+- a **conformance suite** (`@pg-outbox/conformance`) that runs 14 falsifiers on PostgreSQL directly and behind PgBouncer in transaction mode, with 25 negative controls (deliberate defects) that must each make a falsifier fail;
 - a **TLA+ model** (`model/ClaimFence.tla`) of the claim and fence protocol: the correct model has no error, six broken variants each have the counterexample they name, eight reach cases show the model can do what its invariants are about;
 - thin **`pg`** and **Effect** adapters (planned): the Effect `enqueue` will not type-check outside a transaction.
 

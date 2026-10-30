@@ -51,6 +51,7 @@ export {
   operationSupport,
   requireOperation,
   capCachedRead,
+  coverageGaps,
   rowSupport,
   supportOfOutcome,
   UnsupportedOperationError,
