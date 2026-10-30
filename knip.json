@@ -2,7 +2,7 @@
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "workspaces": {
     "tools/quality": {
-      "entry": ["checkExceptions.ts"],
+      "entry": ["checkExceptions.ts", "stagePackages.ts"],
       "project": ["*.ts", "test/**/*.ts"]
     },
     "packages/core": {

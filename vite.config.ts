@@ -128,6 +128,12 @@ export default defineConfig({
           "unicorn/no-array-reduce": "off",
         },
       },
+      {
+        // Test fixtures hold workflow and shell source as text, and a template placeholder in that text is the point
+        // (spec 0006; the same override as pg-txmode's vite.config.ts).
+        files: ["**/test/**"],
+        rules: { "eslint/no-template-curly-in-string": "off" },
+      },
     ],
     rules: {
       "complexity/complexity": ["error", { cognitive: 15 }],

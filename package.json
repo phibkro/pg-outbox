@@ -2,6 +2,13 @@
   "name": "pg-outbox",
   "version": "0.0.0",
   "private": true,
+  "homepage": "https://github.com/phibkro/pg-outbox#readme",
+  "bugs": "https://github.com/phibkro/pg-outbox/issues",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/phibkro/pg-outbox.git"
+  },
   "workspaces": [
     "apps/*",
     "packages/*",
@@ -10,7 +17,7 @@
   "type": "module",
   "scripts": {
     "prepare": "vp config --no-agent",
-    "ready": "bun run check && bun run check:effect && bun run check:exceptions && bun run test && bun run model && bun run build && bun run knip && bun run cpd && bun run secrets",
+    "ready": "bun run check && bun run check:effect && bun run check:exceptions && bun run test && bun run model && bun run build && bun run release:stage && bun run knip && bun run cpd && bun run secrets",
     "check": "vp check",
     "test": "vp run --no-cache -F '@pg-outbox/*' test",
     "build": "vp run --no-cache -F '@pg-outbox/*' build",
@@ -20,9 +27,13 @@
     "secrets": "gitleaks git --config .gitleaks.toml --redact",
     "commitlint": "commitlint",
     "model": "bun tools/model/run.ts",
-    "check:effect": "effect-tsgo tsc -p packages/effect"
+    "check:effect": "effect-tsgo tsc -p packages/effect",
+    "changeset": "changeset",
+    "release:version": "changeset version",
+    "release:stage": "bun tools/quality/stagePackages.ts"
   },
   "devDependencies": {
+    "@changesets/cli": "3.0.3",
     "@commitlint/cli": "21.2.3",
     "@commitlint/config-conventional": "21.2.3",
     "@effect/tsgo": "catalog:",

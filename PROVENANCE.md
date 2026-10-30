@@ -98,3 +98,24 @@ pg-txmode is a dependency from the npm registry, not a submodule. Nothing of it 
 | `tools/quality/test/pgTxmode.test.ts` | none | original: the pin is one exact version everywhere and no submodule is left |
 
 The rows of spec 0001 and later that say "the submodule" for `packages/pg` and `packages/effect` read "pg-txmode `12f1aba`" as their design source; their dependency is now the published `0.1.0-alpha.1`.
+
+## Added by spec 0006
+
+Copied from [`phibkro/pg-txmode`](https://github.com/phibkro/pg-txmode) `main` at `23be53c` (Apache-2.0, the operator's; its spec 0006 at the state of its Revisions 13 and its spec 0007), which ported the design from `tsukuri-labs/tsukuri` spec 0009 (PR #29, merge commit `d0c5a1de330200302edbad58784f351b09eeb4f8`; see the headers kept in the files). The files are copied and then edited in place, so the git blob hashes differ.
+
+| File | Source (pg-txmode `23be53c`) | Deviation |
+| --- | --- | --- |
+| `tools/quality/release.ts`, `releaseWorkflow.ts` | same paths | identical |
+| `tools/quality/stagePackages.ts` | same path | the homepage (`https://github.com/phibkro/pg-outbox#readme`) and the scratch prefix `pg-outbox-pack-` |
+| `tools/quality/test/release.test.ts` | same path | the published set (core, effect, pg; the conformance suite private), `@pg-outbox/*` names, the `@pg-txmode/*` exact-alpha rule in the lockstep test (the helper moved to module scope), a bin test on a fixture (no package here has a bin), the README rule (Hyperdrive, `measuredUnder`) in place of the harness README rule |
+| `tools/quality/test/releaseWorkflow.test.ts` | same path | the stubbed packages are core, effect and pg of `@pg-outbox` at `0.1.0-alpha.0` |
+| `.github/workflows/release.yml` | same path | the names in comments and in the `check` job (`@pg-outbox`, `org ls pg-outbox`); the hold step and its mechanism kept, no hold file |
+| `.github/workflows/checks.yml` | as in spec 0005 | a `Stage release packages` step |
+| `.changeset/config.json`, `README.md`, `pre.json` | same paths | the `fixed` group is core, effect, pg |
+| `secretspec.toml` | same path | the project name and the description (organisation `pg-outbox`) |
+| `vite.config.ts`, `knip.json`, `package.json`, `tools/quality/package.json` | as in spec 0005 | the `**/test/**` override for `no-template-curly-in-string` (pg-txmode has the same); knip's entry `stagePackages.ts`; the release scripts, the repository fields and `@changesets/cli` 3.0.3 in the root; `yaml` 2.9.1 and `smol-toml` 1.9.1 in `tools/quality` |
+| `packages/{core,pg,effect}/package.json` | none | `description`, `license`, `publishConfig`, `prepublishOnly`, no longer `private` |
+| `packages/{core,pg,effect}/README.md` | none | original: what the package is, the alpha caveat, and what a Hyperdrive `yes` covers (spec 0004's measurement) |
+| `docs/evidence/release/README.md` | pg-txmode's `docs/evidence/release/README.md` (shape only) | the run of this repository |
+
+Third-party packages added by spec 0006 (installed, not copied): `@changesets/cli` 3.0.3 (MIT), `yaml` 2.9.1 (ISC), `smol-toml` 1.9.1 (BSD-3-Clause); `verdaccio` 6.11.1 (MIT) through `bunx`, for the rehearsal only.
