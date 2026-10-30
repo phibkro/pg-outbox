@@ -1,6 +1,6 @@
 // The runner of spec 0004. One command per step of the journey; nothing here prints a credential (only key names, lengths and
-// booleans). `up`, `run`, `down` and `status` talk to Cloudflare with the Alchemy profile `default` and to the disposable Neon
-// branch through the connection string that the operator put in a 0600 file.
+// booleans). `up`, `run`, `down` and `status` talk to Cloudflare with the scoped API token that the operator put in a 0600 file,
+// and to the disposable Neon branch through the connection string in another 0600 file.
 //
 //   devenv shell -- bun run --cwd apps/hyperdrive-probe probe <local|up|run|record|down|status>
 import { spawnSync } from "node:child_process";
@@ -35,9 +35,9 @@ const neonFile = path.join(
   ".config/pg-outbox-probe/neon-connection-string"
 );
 
-const profileFile = path.join(
+const cloudflareTokenFile = path.join(
   homedir(),
-  ".alchemy/profiles/default/cloudflare.json"
+  ".config/pg-outbox-probe/cloudflare-api-token"
 );
 
 const names = {
@@ -70,28 +70,61 @@ const neon = () => {
   };
 };
 
-const profile = z.object({
-  values: z.object({
-    access: z.string(),
-    accountId: z.string(),
-    expires: z.number(),
-  }),
+const accountList = z.object({
+  result: z.array(z.object({ id: z.string() })),
 });
 
-const cloudflareToken = () =>
-  profile.parse(JSON.parse(readFileSync(profileFile, "utf-8"))).values;
+const cloudflareErrors = z.object({
+  errors: z.array(z.object({ message: z.string() })),
+});
+
+/** Cloudflare's own error messages of an answer (they name a missing permission); never a credential. */
+const messagesOf = (body: Json): readonly string[] => {
+  const parsed = cloudflareErrors.safeParse(body);
+
+  return parsed.success ? parsed.data.errors.map((error) => error.message) : [];
+};
+
+/**
+ * The scoped API token of the run (the operator's 0600 file) and the one account it can see, from a read-only list call. The values
+ * stay in this process and in the environment of its children; they are never printed, and never a command-line argument.
+ */
+const cloudflare = async (): Promise<{
+  readonly accountId: string;
+  readonly token: string;
+}> => {
+  const token = readFileSync(cloudflareTokenFile, "utf-8").trim();
+
+  const answer = await fetch("https://api.cloudflare.com/client/v4/accounts", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  const listed = accountList.safeParse(await answer.json().catch(() => null));
+
+  if (!listed.success || listed.data.result.length !== 1) {
+    throw new Error(
+      `the token must see exactly one account (the list answered ${answer.status}, ${listed.success ? listed.data.result.length : "an unreadable body"} accounts)`
+    );
+  }
+
+  return { accountId: listed.data.result[0]?.id ?? "", token };
+};
+
+type Json = z.infer<ReturnType<typeof z.json>>;
 
 const api = async (
   resource: string
-): Promise<{ readonly status: number; readonly body: unknown }> => {
-  const { access, accountId } = cloudflareToken();
+): Promise<{ readonly status: number; readonly body: Json }> => {
+  const { accountId, token } = await cloudflare();
 
   const answer = await fetch(
     `https://api.cloudflare.com/client/v4/accounts/${accountId}/${resource}`,
-    { headers: { Authorization: `Bearer ${access}` } }
+    { headers: { Authorization: `Bearer ${token}` } }
   );
 
-  return { body: await answer.json().catch(() => null), status: answer.status };
+  const body = z.json().safeParse(await answer.json().catch(() => null));
+
+  return { body: body.success ? body.data : null, status: answer.status };
 };
 
 const exists = z.object({
@@ -110,32 +143,32 @@ const look = async () => {
       ? (listed.data.result ?? []).filter((c) => c.name === names.hyperdrive)
           .length
       : -1,
+    messages: [...messagesOf(worker.body), ...messagesOf(configs.body)],
     workerExists: worker.status === 200,
     workerStatus: worker.status,
   };
 };
 
-const alchemy = (
+/** The credentials of the Alchemy CLI: the token, and the account it can see, in the environment of the child only. */
+const alchemy = async (
   args: readonly string[],
   env: Record<string, string>,
   output: string
-): number => {
+): Promise<number> => {
+  const { accountId, token } = await cloudflare();
+
   const result = spawnSync(
     "bunx",
-    [
-      "alchemy",
-      ...args,
-      "--stage",
-      "probe",
-      "--profile",
-      "default",
-      "--yes",
-      "--no-input",
-    ],
+    ["alchemy", ...args, "--stage", "probe", "--yes", "--no-input"],
     {
       cwd: path.join(app, "deploy"),
       encoding: "utf-8",
-      env: { ...process.env, ...env },
+      env: {
+        ...process.env,
+        ...env,
+        CLOUDFLARE_ACCOUNT_ID: accountId,
+        CLOUDFLARE_API_TOKEN: token,
+      },
     }
   );
 
@@ -216,6 +249,7 @@ const status = async (): Promise<number> => {
     JSON.stringify({
       hyperdriveConfigsNamedForTheProbe: seen.hyperdrives,
       hyperdriveListStatus: seen.hyperdriveStatus,
+      messages: seen.messages,
       neonStringFile: existsSync(neonFile),
       tokenFile: existsSync(tokenFile),
       workerExists: seen.workerExists,
@@ -233,7 +267,7 @@ const commands = {
     // destroy needs the stack's inputs to evaluate it, not their values: the real ones when the file is still there
     const inputs = existsSync(neonFile) ? neon() : placeholders;
 
-    const code = alchemy(
+    const code = await alchemy(
       ["destroy"],
       { ...inputs, PROBE_TOKEN: "unused" },
       path.join(dot, `destroy-${stamp()}.txt`)
@@ -241,11 +275,25 @@ const commands = {
 
     say(`alchemy destroy exited ${code}`);
 
-    for (const file of [tokenFile, stateFile, neonFile]) {
-      rmSync(file, { force: true });
+    const clean = await status();
+
+    // The credentials of the run are deleted only once the account is verified clean; until then they are needed to retry.
+    if (clean === 0) {
+      for (const file of [
+        tokenFile,
+        stateFile,
+        neonFile,
+        cloudflareTokenFile,
+      ]) {
+        rmSync(file, { force: true });
+      }
+
+      say(
+        "deleted: the run's token, its state, the Neon string and the Cloudflare token files"
+      );
     }
 
-    return await status();
+    return clean;
   },
   local: async () => {
     mkdirSync(dot, { recursive: true });
@@ -336,11 +384,10 @@ const commands = {
 
     if (
       seen.hyperdriveStatus !== 200 ||
-      seen.workerStatus === 401 ||
-      seen.workerStatus === 403
+      (seen.workerStatus >= 400 && seen.workerStatus !== 404)
     ) {
       say(
-        "the profile cannot read the account (see the statuses above): stopping before any deploy"
+        `the token cannot read the account (the statuses and Cloudflare's own messages are above): stopping before any deploy. ${seen.messages.join(" | ")}`
       );
 
       return 1;
@@ -355,7 +402,12 @@ const commands = {
 
     const token = readFileSync(tokenFile, "utf-8").trim();
     const output = path.join(dot, `deploy-${stamp()}.txt`);
-    const code = alchemy(["deploy"], { ...neon(), PROBE_TOKEN: token }, output);
+
+    const code = await alchemy(
+      ["deploy"],
+      { ...neon(), PROBE_TOKEN: token },
+      output
+    );
 
     say(`alchemy deploy exited ${code}; raw output: ${output}`);
 
