@@ -28,7 +28,8 @@ import type { PgOutbox } from "../src/index.ts";
 export const pgSubject = (
   outbox: SuiteOutbox,
   db: TxClient,
-  mutation?: Mutation
+  mutation?: Mutation,
+  settings: { readonly allowUnverified?: boolean } = {}
 ): Built => {
   const log: StatementRecord[] = [];
   const rewrite = rewriteSent(outbox, mutation);
@@ -97,6 +98,7 @@ export const pgSubject = (
   };
 
   const adapter: PgOutbox<Kind, ErrorClass> = createPgOutbox({
+    allowUnverified: settings.allowUnverified === true,
     db: proxy,
     outbox,
   });

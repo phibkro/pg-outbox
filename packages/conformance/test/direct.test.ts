@@ -1,29 +1,14 @@
-import { pgConnect, startPostgres } from "@pg-txmode/harness";
-import type { Postgres } from "@pg-txmode/harness";
-import { afterAll, beforeAll } from "vite-plus/test";
+import { pgConnect } from "@pg-txmode/harness";
 
 import { defineConformance, roundsFromEnvironment } from "../src/index.ts";
 import type { Target } from "../src/index.ts";
+import { postgresServer } from "./postgresServer.ts";
 
 /** PostgreSQL 18 directly: the control of every falsifier. */
-let postgres: Postgres | undefined;
-
-beforeAll(async () => {
-  postgres = await startPostgres();
-}, 120_000);
-
-afterAll(async () => {
-  await postgres?.stop();
-});
+const postgres = postgresServer();
 
 const target: Target = {
-  connect: async () => {
-    if (postgres === undefined) {
-      throw new Error("the test PostgreSQL is not running");
-    }
-
-    return await pgConnect(postgres.endpoint.url)();
-  },
+  connect: async () => await pgConnect(postgres().endpoint.url)(),
   name: "PostgreSQL directly",
 };
 

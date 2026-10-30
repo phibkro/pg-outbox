@@ -67,11 +67,16 @@ export {
   requireOperation,
   capCachedRead,
   coverageGaps,
+  exercisedBy,
+  describeMeasurement,
+  measuredUnder,
+  measurements,
   rowSupport,
+  supportGiven,
   supportOfOutcome,
   UnsupportedOperationError,
 } from "./support.ts";
 
-export type { RequireOptions } from "./support.ts";
+export type { Measurement, RequireOptions } from "./support.ts";
 
 export { claimToken, InvalidArgumentError, outboxId } from "./validate.ts";

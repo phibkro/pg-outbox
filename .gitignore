@@ -6,3 +6,6 @@ dist/
 coverage/
 *.log
 .DS_Store
+.probe/
+.alchemy/
+.wrangler/

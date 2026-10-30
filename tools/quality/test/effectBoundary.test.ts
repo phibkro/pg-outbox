@@ -48,7 +48,7 @@ const violations = (
 
 const workspaceManifests = (root: string): readonly string[] => [
   "package.json",
-  ...globSync("{packages,tools}/*/package.json", { cwd: root }),
+  ...globSync("{apps,packages,tools}/*/package.json", { cwd: root }),
 ];
 
 describe("Effect boundary", () => {
@@ -136,10 +136,22 @@ const sourceFiles = (root: string, pattern: string): readonly string[] =>
     (file) => !file.includes("node_modules/")
   );
 
-/** Every TypeScript file outside the Effect adapter that imports Effect. */
+/**
+ * An app's `deploy/` directory is the one other place that imports Effect: Alchemy's stacks are Effect programs, and the
+ * installed Alchemy needs another Effect version than this repository's, so the stack has its own manifest and lockfile
+ * outside the workspace (spec 0004). Nothing of the app proper, nor any package, imports it.
+ */
+const deployStack = /^apps\/[^/]+\/deploy\//u;
+
+/** Every TypeScript file outside the Effect adapter (and an app's deploy stack) that imports Effect. */
 const importers = (root: string): readonly string[] =>
-  sourceFiles(root, "{packages,tools}/**/*.ts")
-    .filter((file) => !file.startsWith(`${effectAdapter}/`) && file !== self)
+  sourceFiles(root, "{apps,packages,tools}/**/*.ts")
+    .filter(
+      (file) =>
+        !file.startsWith(`${effectAdapter}/`) &&
+        !deployStack.test(file) &&
+        file !== self
+    )
     .filter((file) =>
       effectSpecifier.test(readFileSync(path.join(root, file), "utf-8"))
     );
@@ -171,11 +183,20 @@ describe("Effect boundary, source level", () => {
         path.join(root, `${effectAdapter}/src/e.ts`),
         'import { Effect } from "effect";\n'
       );
+      writeFixture(
+        path.join(root, "apps/probe/deploy/alchemy.run.ts"),
+        'import { Effect } from "effect";\n'
+      );
+      writeFixture(
+        path.join(root, "apps/probe/src/worker.ts"),
+        'import { Effect } from "effect";\n'
+      );
 
       return [...importers(root)].toSorted();
     });
 
     expect(found).toStrictEqual([
+      "apps/probe/src/worker.ts",
       "packages/core/src/a.ts",
       "packages/pg/src/b.ts",
       "tools/quality/c.ts",

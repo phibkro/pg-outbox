@@ -10,7 +10,7 @@ import {
 } from "@pg-txmode/core";
 import type { ConnectionMode, RowId, Support } from "@pg-txmode/core";
 
-import { isOperationId, operationById } from "./operations.ts";
+import { isOperationId, operationById, operationIds } from "./operations.ts";
 import type { OperationId } from "./operations.ts";
 
 /**
@@ -140,14 +140,92 @@ const weaker = (a: Support, b: Support): Support =>
   rank[a] <= rank[b] ? a : b;
 
 /**
- * What the mode lets an operation do: the weakest cell of its catalogue rows that is evidence for this mode and this use,
- * capped for a read behind a cache, and no stronger than any operation it may run after itself (`claimById` can run
- * `classify`, a read).
+ * The falsifiers of the conformance suite that exercise each operation (their ids are the suite's; a test of the conformance
+ * package fails when one does not exist). An operation is measured through a mode only when every one of these passed through
+ * it.
  */
-export const operationSupport = (
+export const exercisedBy: Readonly<Record<OperationId, readonly string[]>> = {
+  ack: ["F3", "F5", "F15"],
+  bury: ["F3", "F7", "F10"],
+  claimBatch: ["F2", "F7"],
+  claimById: ["F2", "F3", "F6", "F7", "F15"],
+  classify: ["F2", "F4", "F6", "F7", "F15"],
+  cleanup: ["F10", "F14"],
+  counts: ["F10"],
+  enqueue: ["F1", "F14", "F19"],
+  holdClaim: ["F3", "F4"],
+  markQueued: ["F9"],
+  open: ["F15"],
+  release: ["F3", "F7", "F15"],
+  stale: ["F9"],
+};
+
+/**
+ * A run of the suite through a mode that passed for one operation: the mode, the operation and the recorded output (a path
+ * under `docs/evidence/`, which a test reads: it must name every falsifier of `exercisedBy` as passing). The fact belongs in
+ * pg-txmode's catalogue, as a `hyperdrive-probe` cell with the same evidence; until that is merged this repository carries it,
+ * as it carries `coverageGaps`.
+ *
+ * A `yes` that comes from a measurement is a `yes` **under the conditions of the run**, and `covers` says which: it is shown
+ * wherever the mode check is (`describeMeasurement`, `measuredUnder`), so a caller sees what the answer stands on.
+ */
+export interface Measurement {
+  readonly mode: ConnectionMode;
+  readonly operation: OperationId;
+  readonly evidence: string;
+  /** The day of the run (UTC, `YYYY-MM-DD`): a run is evidence of its day. */
+  readonly on: string;
+  /** The conditions of the run, in words: the settings, the plan, the origin, the size. What it does not say is not covered. */
+  readonly covers: string;
+}
+
+/** What a measurement says about itself, for a message or a log line. */
+export const describeMeasurement = (measurement: Measurement): string =>
+  `measured on ${measurement.on} under: ${measurement.covers} (evidence: ${measurement.evidence})`;
+
+const runCovers =
+  "Hyperdrive caching enabled (its default); Cloudflare Workers Free plan, one Worker placed aws:eu-central-1, one invocation per socket and 24 sockets; a Neon branch's direct endpoint (PostgreSQL 18.6) as the origin; 20 rounds of each race; the suite of 15 falsifiers and 28 controls; no LISTEN and no session advisory lock (excluded by design, F8). Not covered: caching disabled, the pooled Neon endpoint, another plan, region or origin, a long or loaded run.";
+
+/**
+ * The recorded runs. The one run of 2026-10-30 (spec 0004: the suite of 15 falsifiers and 28 controls through a deployed Worker,
+ * a Hyperdrive configuration with caching enabled, a disposable Neon branch; 43 of 43 passed, twice) measured every operation
+ * through that Hyperdrive path: each operation's falsifiers (`exercisedBy`) all held.
+ */
+export const measurements: readonly Measurement[] = operationIds.map(
+  (operation) => ({
+    covers: runCovers,
+    evidence: "docs/evidence/hyperdrive/2026-10-30-pg-outbox-probe.md",
+    mode: hyperdrive,
+    on: "2026-10-30",
+    operation,
+  })
+);
+
+/** The operations that no cell of the mode forbids: a measurement lifts `unverified`, never `no`. */
+const forbidden = (mode: ConnectionMode, id: OperationId): boolean =>
+  operationById(id).rows.some(
+    (row) => supportOfOutcome(cellOf(mode, row).outcome) === "no"
+  );
+
+/**
+ * What the mode lets an operation do, given the recorded runs: `yes` where a run measured it through this mode and no cell
+ * forbids it; otherwise the weakest cell of its catalogue rows that is evidence for this mode and this use, capped for a
+ * read behind a cache, and no stronger than any operation it may run after itself (`claimById` can run `classify`, a read).
+ */
+export const supportGiven = (
+  recorded: readonly Measurement[],
   mode: ConnectionMode,
   id: OperationId
 ): Support => {
+  if (
+    recorded.some(
+      (run) => run.operation === id && columnOf(run.mode) === columnOf(mode)
+    ) &&
+    !forbidden(mode, id)
+  ) {
+    return "yes";
+  }
+
   const operation = operationById(id);
 
   let support = capCachedRead(
@@ -161,10 +239,39 @@ export const operationSupport = (
       throw new Error(`${id} follows ${follower}, which is not an operation`);
     }
 
-    support = weaker(support, operationSupport(mode, follower));
+    support = weaker(support, supportGiven(recorded, mode, follower));
   }
 
   return support;
+};
+
+/** What the mode lets an operation do, given the runs recorded in `measurements`. */
+export const operationSupport = (
+  mode: ConnectionMode,
+  id: OperationId
+): Support => supportGiven(measurements, mode, id);
+
+/**
+ * The recorded runs that a `yes` of these operations in this mode stands on (the operations and those they may run after
+ * themselves), each once: empty where the catalogue alone vouches for the mode (direct, PgBouncer) or nothing ran.
+ */
+export const measuredUnder = (
+  mode: ConnectionMode,
+  operations: readonly OperationId[]
+): readonly Measurement[] => {
+  const wanted = new Set<string>(
+    operations.flatMap((id) => [id, ...(operationById(id).follows ?? [])])
+  );
+
+  const distinct = new Map<string, Measurement>();
+
+  for (const run of measurements) {
+    if (wanted.has(run.operation) && columnOf(run.mode) === columnOf(mode)) {
+      distinct.set(describeMeasurement(run), run);
+    }
+  }
+
+  return [...distinct.values()];
 };
 
 /** The mode cannot honour the operation, or the catalogue has not verified it there. The message quotes the catalogue. */
@@ -206,8 +313,12 @@ export class UnsupportedOperationError extends Error {
         ? ""
         : `; it may run ${(operation.follows ?? []).join(", ")} after itself`;
 
+    const recorded = measuredUnder(mode, [id])
+      .map((run) => `${run.operation} ${describeMeasurement(run)}`)
+      .join("; ");
+
     super(
-      `${id} is ${support === "no" ? "not available" : "unverified"} on a ${describeMode(mode)} connection${after}; catalogue ${cells}`
+      `${id} is ${support === "no" ? "not available" : "unverified"} on a ${describeMode(mode)} connection${after}; catalogue ${cells}${recorded === "" ? "" : `; recorded runs for this mode: ${recorded}`}`
     );
     this.operation = id;
     this.support = support;

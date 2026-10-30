@@ -405,6 +405,19 @@ export const typedAnswers: Falsifier = {
         rewrite: replacing("SELECT status,", "SELECT 'pending' AS status,"),
       },
     },
+    {
+      describe:
+        "a report of open rows that lists settled rows too (the status filter replaced by a true condition that keeps its parameter)",
+      id: "open-lists-settled",
+      mutation: {
+        kind: "statement",
+        operation: "open",
+        rewrite: replacing(
+          "WHERE status = 'pending' ORDER",
+          "WHERE $1::int > 0 ORDER"
+        ),
+      },
+    },
   ],
   id: "F15",
   run: async ({ subject }) => {
@@ -439,6 +452,30 @@ export const typedAnswers: Falsifier = {
         `row ${settled}`
       ).toStrictEqual({ _tag: "Settled" });
     }
+
+    // The report of open rows says the same: the held row and the waiting row with their state, never the settled one, never a payload.
+    const listed = await subject.open({ limit: 10, now: at(400) });
+
+    expect(
+      listed.map((row) => row.id),
+      "open rows, newest first"
+    ).toStrictEqual([waiting, live]);
+    expect(
+      listed.map((row) => [
+        row.attempts,
+        row.heldMs,
+        row.dueInMs,
+        row.lastError,
+      ])
+    ).toStrictEqual([
+      [1, 0, 600, "timeout"],
+      [1, 600, 0, null],
+    ]);
+    expect(
+      Object.keys(listed[0] ?? {}),
+      "no payload in a report"
+    ).not.toContain("payload");
   },
-  title: "the answers of a miss are the truth: Held, NotDue, Settled",
+  title:
+    "the answers of a miss are the truth: Held, NotDue, Settled; the report of open rows agrees",
 };

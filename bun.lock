@@ -18,6 +18,27 @@
         "vite-plus": "catalog:",
       },
     },
+    "apps/hyperdrive-probe": {
+      "name": "@pg-outbox/hyperdrive-probe",
+      "version": "0.0.0",
+      "dependencies": {
+        "@pg-txmode/core": "workspace:*",
+        "pg": "catalog:",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@cloudflare/workers-types": "5.20261030.1",
+        "@pg-outbox/conformance": "workspace:*",
+        "@pg-txmode/harness": "workspace:*",
+        "@pg-txmode/pg": "workspace:*",
+        "@types/node": "catalog:",
+        "@types/pg": "catalog:",
+        "@types/ws": "8.18.2",
+        "typescript": "catalog:",
+        "vite-plus": "catalog:",
+        "ws": "8.22.0",
+      },
+    },
     "packages/conformance": {
       "name": "@pg-outbox/conformance",
       "version": "0.0.0",
@@ -228,6 +249,8 @@
     "@clack/core": ["@clack/core@1.5.1", "", { "dependencies": { "fast-wrap-ansi": "^0.2.0", "sisteransi": "^1.0.5" } }, "sha512-iHTrHA8MtVuLl2TfZySmcKv1qO2PoyC9Z7pfSDozEuV5vtY3/wcOPKJXlqJ5Oq2Cx5DDGQGAMVx6HZfRRoVEbQ=="],
 
     "@clack/prompts": ["@clack/prompts@1.8.1", "", { "dependencies": { "@clack/core": "1.5.1", "fast-string-width": "^3.0.2", "fast-wrap-ansi": "^0.2.0", "sisteransi": "^1.0.5" } }, "sha512-dlT1m5e/0yUL0kRNcQn7yGLVThkgbB0Ga/1AmfDDC/8ik6AIiSf2QLQO2zPYvefsHP0aFgxO93cVLCCfDp7kzQ=="],
+
+    "@cloudflare/workers-types": ["@cloudflare/workers-types@5.20261030.1", "", {}, "sha512-oKHewMzKBtXq3dWiYL9GpHFnBfg8juBOir9PPREMPT8G2MHotAxIBIQ2w1rpO1xCN9etRlAxJaeoQbMGSlXqlQ=="],
 
     "@commitlint/cli": ["@commitlint/cli@21.2.3", "", { "dependencies": { "@commitlint/config-conventional": "^21.2.3", "@commitlint/format": "^21.2.3", "@commitlint/lint": "^21.2.3", "@commitlint/load": "^21.2.3", "@commitlint/read": "^21.2.3", "@commitlint/types": "^21.2.3", "tinyexec": "^1.0.0", "yargs": "^18.0.0" }, "bin": { "commitlint": "cli.js" } }, "sha512-5yOX6IRjcrIReCxpyAd04hgI/yhUMpVBJ/ouwFV0wk9yx5+fYRDWZWJ5h55Tbedgfol+5m2mU5nqzbB8g3v0vQ=="],
 
@@ -488,6 +511,8 @@
     "@pg-outbox/core": ["@pg-outbox/core@workspace:packages/core"],
 
     "@pg-outbox/effect": ["@pg-outbox/effect@workspace:packages/effect"],
+
+    "@pg-outbox/hyperdrive-probe": ["@pg-outbox/hyperdrive-probe@workspace:apps/hyperdrive-probe"],
 
     "@pg-outbox/model": ["@pg-outbox/model@workspace:tools/model"],
 

@@ -63,7 +63,10 @@ export default defineConfig({
   },
   lint: {
     extends: [core, antiSlop],
-    ignorePatterns: ["vendor/**"],
+    // `apps/*/deploy/` is a stack of its own, outside the workspace, with its own manifest and lockfile (spec 0004: Alchemy's
+    // installed version needs another Effect version). `bun install` at the root does not install it, so type-aware lint
+    // sees every import as an error type there; the stack file is formatted but not linted, and it type-checks where it is installed.
+    ignorePatterns: ["vendor/**", "apps/*/deploy/**"],
     jsPlugins: [
       { name: "vite-plus", specifier: "vite-plus/oxlint-plugin" },
       { name: "complexity", specifier: "oxlint-plugin-complexity" },
@@ -109,11 +112,16 @@ export default defineConfig({
         },
       },
       {
-        // The conformance suite and every test drive a server through sequential steps: each step waits for the one
+        // The conformance suite, the probe app (a socket pool over a Worker: a promise per socket event, a waiting list of
+        // resolvers) and every test drive a server through sequential steps: each step waits for the one
         // before it (a transaction's statements, a race's rounds, a drain that stops at the first empty answer), and a
         // step that fails is compared, not rethrown. The rules below ask for loops over `await`, for no promise
         // constructor and for no `.then`, which these files cannot satisfy without hiding the order of the steps.
-        files: ["packages/conformance/**", "**/test/**"],
+        files: [
+          "packages/conformance/**",
+          "apps/hyperdrive-probe/**",
+          "**/test/**",
+        ],
         rules: {
           "eslint/no-await-in-loop": "off",
           "eslint/no-promise-executor-return": "off",

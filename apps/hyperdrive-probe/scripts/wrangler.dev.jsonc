@@ -1,0 +1,12 @@
+{
+  // The Worker under workerd on this machine (`wrangler dev`), for the spike of spec 0004 only. The Hyperdrive binding is local:
+  // wrangler hands the Worker the connection string of CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE. It is the
+  // real Worker code in the real runtime, and it is not Hyperdrive. Nothing here is deployed.
+  "name": "pg-outbox-probe-dev",
+  "main": "../src/worker.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat", "enable_request_signal"],
+  "hyperdrive": [
+    { "binding": "HYPERDRIVE", "id": "00000000000000000000000000000000" },
+  ],
+}

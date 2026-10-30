@@ -19,17 +19,19 @@ import {
   operationSupport,
   operations,
   requireOperation,
+  supportGiven,
   supportOfOutcome,
   UnsupportedOperationError,
 } from "../src/index.ts";
 
 describe("the mode check", () => {
-  test("direct and PgBouncer support every operation; Hyperdrive and Supavisor, where nothing ran, say unverified for every one", () => {
+  test("direct, PgBouncer and Neon's pooler support every operation; Hyperdrive does since the run of 2026-10-30; Supavisor, where nothing ran, says unverified for every one", () => {
     for (const id of operationIds) {
       expect(operationSupport(direct, id), `${id} direct`).toBe("yes");
       expect(operationSupport(pgBouncer(0), id), `${id} pgbouncer`).toBe("yes");
       expect(operationSupport(neonPooler, id), `${id} neon`).toBe("yes");
-      expect(operationSupport(hyperdrive, id), `${id} hyperdrive`).toBe(
+      expect(operationSupport(hyperdrive, id), `${id} hyperdrive`).toBe("yes");
+      expect(supportGiven([], hyperdrive, id), `${id} hyperdrive, no run`).toBe(
         "unverified"
       );
       expect(operationSupport(supavisor, id), `${id} supavisor`).toBe(
@@ -40,25 +42,23 @@ describe("the mode check", () => {
 
   test("an unverified operation is refused with the catalogue's words unless the caller accepts it", () => {
     expect(() => {
-      requireOperation(hyperdrive, "claimBatch");
+      requireOperation(supavisor, "claimBatch");
     }).toThrow(UnsupportedOperationError);
     expect(() => {
-      requireOperation(hyperdrive, "claimBatch");
-    }).toThrow(/skip-locked/u);
-    expect(() => {
-      requireOperation(hyperdrive, "claimBatch", { allowUnverified: true });
+      requireOperation(supavisor, "claimBatch", { allowUnverified: true });
     }).not.toThrow();
+    expect(
+      new UnsupportedOperationError(hyperdrive, "claimBatch", "unverified")
+        .message
+    ).toMatch(/skip-locked/u);
   });
 
-  test("enqueue on Hyperdrive is refused for what the recorded run did not cover, and says so", () => {
-    expect(() => {
-      requireOperation(hyperdrive, "enqueue");
-    }).toThrow(
+  test("before the run, enqueue on Hyperdrive is refused for what the catalogue's run did not cover, and says so", () => {
+    expect(
+      new UnsupportedOperationError(hyperdrive, "enqueue", "unverified").message
+    ).toMatch(
       /concurrent DO NOTHING claim, with exactly one winner, was not run/u
     );
-    expect(() => {
-      requireOperation(hyperdrive, "enqueue", { allowUnverified: true });
-    }).not.toThrow();
   });
 
   test("a Supavisor refusal says that the cell is the measured PgBouncer's and that no run was made on it", () => {
@@ -141,11 +141,13 @@ describe("the mode check", () => {
 });
 
 describe("an operation is no stronger than the operations it may run after itself", () => {
-  test("claimById can run classify, a read: the refusal says so and quotes both operations' rows", () => {
+  test("claimById can run classify, a read: before the run the refusal says so and quotes both operations' rows", () => {
     expect(operationSupport(direct, "claimById")).toBe("yes");
-    expect(operationSupport(hyperdrive, "claimById")).toBe("unverified");
-    expect(() => {
-      requireOperation(hyperdrive, "claimById");
-    }).toThrow(/may run classify after itself/u);
+    expect(supportGiven([], hyperdrive, "claimById")).toBe("unverified");
+    expect(operationSupport(hyperdrive, "claimById")).toBe("yes");
+    expect(
+      new UnsupportedOperationError(hyperdrive, "claimById", "unverified")
+        .message
+    ).toMatch(/may run classify after itself/u);
   });
 });
