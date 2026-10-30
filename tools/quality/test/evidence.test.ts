@@ -8,16 +8,22 @@ const directory = path.join(repoRoot, "docs/evidence/hyperdrive");
 
 /**
  * A recorded run is published in a public repository: it names no Worker address, no host of the database, no connection string,
- * no identifier of 32 or more hexadecimal digits (an account, a configuration, a token).
+ * no identifier of 32 or more hexadecimal digits (an account, a configuration, a token). The one 40-digit value allowed is the
+ * commit of the run, in the header row that says so.
  */
-const leaks = (text: string): readonly string[] =>
-  [
+const leaks = (text: string): readonly string[] => {
+  const withoutCommit = text.replace(/^\| Commit \| [0-9a-f]{40} \|$/mu, "");
+
+  return [
     /\.workers\.dev/u,
     /\.neon\.tech/u,
     /postgres(?:ql)?:\/\//u,
     /\b[0-9a-f]{32,}\b/u,
     /Sec-WebSocket-Protocol: probe\./u,
-  ].flatMap((pattern) => (pattern.test(text) ? [String(pattern)] : []));
+  ].flatMap((pattern) =>
+    pattern.test(withoutCommit) ? [String(pattern)] : []
+  );
+};
 
 const recorded = (): readonly string[] => {
   try {
@@ -46,6 +52,10 @@ describe("the recorded runs through Hyperdrive carry no address, host, connectio
     ).toHaveLength(1);
     expect(leaks("postgres://user@host/db")).toHaveLength(1);
     expect(leaks("account 0123456789abcdef0123456789abcdef")).toHaveLength(1);
+    const commit = "0123456789abcdef0123456789abcdef01234567";
+
+    expect(leaks(`| Commit | ${commit} |`)).toStrictEqual([]);
+    expect(leaks(`| Account | ${commit} |`)).toHaveLength(1);
     expect(leaks("PASS F2 holds: one live claim per row")).toStrictEqual([]);
   });
 });

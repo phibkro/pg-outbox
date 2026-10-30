@@ -339,7 +339,7 @@ const commands = {
       .filter((file) => file.startsWith("run-"))
       .toSorted();
 
-    const latest = outputs.at(-1);
+    const latest = process.env.PG_OUTBOX_RECORD_RUN ?? outputs.at(-1);
 
     if (latest === undefined) {
       say("no run to record: bun run probe run first");
@@ -348,10 +348,11 @@ const commands = {
     }
 
     const day = new Date().toISOString().slice(0, 10);
+    const label = process.env.PG_OUTBOX_RECORD_LABEL ?? "pg-outbox-probe";
 
     const target = path.join(
       root,
-      `docs/evidence/hyperdrive/${day}-pg-outbox-probe.md`
+      `docs/evidence/hyperdrive/${day}-${label}.md`
     );
 
     mkdirSync(path.dirname(target), { recursive: true });

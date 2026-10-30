@@ -14,6 +14,8 @@ export interface Connection {
 
 export interface Socket {
   readonly send: (data: string) => void;
+  /** Ends the session's socket: its connection is gone, or the protocol was broken. */
+  readonly close: () => void;
 }
 
 /** A failure as node-postgres gives it: a message, and the SQLSTATE of a server error. */
@@ -57,14 +59,18 @@ export const openSession = (
 
       socket.send(JSON.stringify({ id, ok: true, rows } satisfies Response));
     } catch (error) {
-      socket.send(
-        JSON.stringify(
-          failureOf(
-            id,
-            error instanceof Error ? error : new Error(String(error))
-          )
-        )
+      const failure = failureOf(
+        id,
+        error instanceof Error ? error : new Error(String(error))
       );
+
+      socket.send(JSON.stringify(failure));
+
+      // A failure without a SQLSTATE is not the answer of the server to a statement: the connection or the protocol failed.
+      // The session ends rather than carrying on in autocommit after a lost BEGIN.
+      if (!failure.ok && failure.code === undefined) {
+        socket.close();
+      }
     }
   };
 

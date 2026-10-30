@@ -275,7 +275,7 @@ export const createRemoteClient = (options: RemoteOptions): TxClient => {
       try {
         return await remote.send(text, values);
       } catch (error) {
-        usable = error instanceof RemoteError;
+        usable = error instanceof RemoteError && error.code !== undefined;
 
         throw error;
       } finally {

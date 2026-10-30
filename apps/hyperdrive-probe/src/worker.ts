@@ -59,6 +59,9 @@ const session = (request: Request, env: Env): Response => {
   server.accept();
 
   const open = openSession(async () => await connect(env), {
+    close: () => {
+      server.close();
+    },
     send: (data) => {
       server.send(data);
     },

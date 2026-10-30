@@ -22,11 +22,14 @@ export class RolledBackError extends Error {
   override readonly name = "RolledBackError";
 }
 
+/** The rows of the table, read straight from it; the read calls `clock_timestamp()` so that no caching proxy answers for the table. */
 export const count = async (
   subject: Subject,
   table: string
 ): Promise<number> => {
-  const [row] = await subject.sql(`SELECT count(*)::int AS n FROM ${table}`);
+  const [row] = await subject.sql(
+    `SELECT count(*)::int AS n, clock_timestamp() AS observed FROM ${table}`
+  );
 
   return Number(row?.n);
 };
@@ -105,8 +108,9 @@ export const stateOf = async (
   subject: Subject,
   id: string
 ): Promise<RowState> => {
+  // clock_timestamp() makes a read skip Hyperdrive's cache (run 1 of spec 0004: a ground-truth read served from the cache is a lie)
   const [row] = await subject.sql(
-    `SELECT status, attempts, claim_token::text AS token, last_error FROM ${table} WHERE id = $1::bigint`,
+    `SELECT status, attempts, claim_token::text AS token, last_error, clock_timestamp() AS observed FROM ${table} WHERE id = $1::bigint`,
     [id]
   );
 

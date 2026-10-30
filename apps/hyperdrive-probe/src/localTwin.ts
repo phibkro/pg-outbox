@@ -40,6 +40,9 @@ export const startLocalTwin = async (
         return client;
       },
       {
+        close: () => {
+          socket.close();
+        },
         send: (data) => {
           socket.send(data);
         },

@@ -4,10 +4,26 @@ import { response, subprotocolOf } from "../src/protocol.ts";
 import { openSession } from "../src/session.ts";
 import type { Connection } from "../src/session.ts";
 
+const failing = (reason: Error): Connection => ({
+  end: async () => {
+    await Promise.resolve();
+  },
+  query: async () => {
+    await Promise.resolve();
+
+    throw reason;
+  },
+});
+
 const sent = () => {
   const texts: string[] = [];
+  let closed = 0;
 
   return {
+    close: () => {
+      closed += 1;
+    },
+    closes: () => closed,
     send: (data: string) => {
       texts.push(data);
     },
@@ -82,6 +98,29 @@ describe("a session of the probe Worker", () => {
       id: 2,
       ok: true,
       rows: [],
+    });
+  });
+
+  test("a failure without a SQLSTATE (the connection was lost) ends the session; a server error does not", async () => {
+    const server = sent();
+    const lost = sent();
+
+    const open = async (reason: Error, socket: ReturnType<typeof sent>) => {
+      await openSession(
+        async () => await Promise.resolve(failing(reason)),
+        socket
+      ).message(JSON.stringify({ id: 1, text: "SELECT 1", values: [] }));
+    };
+
+    await open(Object.assign(new Error("refused"), { code: "23505" }), server);
+    await open(new Error("Connection terminated unexpectedly"), lost);
+
+    expect(server.closes()).toBe(0);
+    expect(lost.closes()).toBe(1);
+    expect(parsed(lost.texts[0])).toStrictEqual({
+      id: 1,
+      message: "Connection terminated unexpectedly",
+      ok: false,
     });
   });
 
