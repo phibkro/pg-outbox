@@ -1,6 +1,7 @@
 import {
   databaseNow,
   execute,
+  measuredUnder,
   operationIds,
   requireOperation,
 } from "@pg-outbox/core";
@@ -16,6 +17,7 @@ import type {
   HoldResult,
   Now,
   OpenRow,
+  Measurement,
   OperationId,
   Outbox,
   OutboxId,
@@ -77,6 +79,11 @@ type Call<
  * - **Nothing runs at construction** except the mode check, which reads the catalogue and sends nothing.
  */
 export interface PgOutbox<Kind extends string, ErrorClass extends string> {
+  /**
+   * The recorded runs that a `yes` of the operations in use stands on (empty where the catalogue alone vouches for the mode):
+   * log it or show it where an operator chooses a mode. Each says its date and the conditions it covers.
+   */
+  readonly measuredUnder: readonly Measurement[];
   readonly enqueue: (
     tx: Transaction,
     args: Call<Kind, ErrorClass, "enqueue">
@@ -134,7 +141,9 @@ export const createPgOutbox = <
 ): PgOutbox<Kind, ErrorClass> => {
   const { outbox, db } = options;
 
-  for (const id of options.operations ?? operationIds) {
+  const operationsInUse = options.operations ?? operationIds;
+
+  for (const id of operationsInUse) {
     requireOperation(db.mode, id, {
       allowUnverified: options.allowUnverified === true,
     });
@@ -168,6 +177,7 @@ export const createPgOutbox = <
       await execute(inTransaction(tx), outbox.holdClaim(args)),
     markQueued: async (args) =>
       await execute(alone, outbox.markQueued({ ...args, now: at(args.now) })),
+    measuredUnder: measuredUnder(db.mode, operationsInUse),
     open: async (args) =>
       await execute(alone, outbox.open({ ...args, now: at(args.now) })),
     release: async (args, tx) =>

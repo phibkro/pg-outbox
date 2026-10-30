@@ -35,7 +35,7 @@ PG_OUTBOX_ROUNDS=300 devenv shell -- bash -c 'cd packages/conformance && bunx vp
 2. Spec 0001: the core, the schema, the model and the conformance suite. Merged.
 3. Spec 0002: the `pg` adapter. Merged.
 4. Spec 0003: the Effect adapter. Merged.
-5. Spec 0004: the Hyperdrive probe (`apps/hyperdrive-probe`): the whole suite through a Worker and Hyperdrive in front of a throwaway Neon branch. In review. It ran once, on 2026-10-30, and the raw output is under `docs/evidence/hyperdrive/`: the suite (15 falsifiers, 28 controls) passed 43 of 43 through Hyperdrive with caching enabled, twice, after two earlier runs found a defect of the suite (its own reads were served from the cache) and one lost connection. All 13 operations are now `yes` on Hyperdrive; the Worker, the Hyperdrive configuration and the credentials are gone.
+5. Spec 0004: the Hyperdrive probe (`apps/hyperdrive-probe`): the whole suite through a Worker and Hyperdrive in front of a throwaway Neon branch. In review. It ran once, on 2026-10-30, and the raw output is under `docs/evidence/hyperdrive/`: the suite (15 falsifiers, 28 controls) passed 43 of 43 through Hyperdrive with caching enabled, twice, after two earlier runs found a defect of the suite (its own reads were served from the cache) and one lost connection. All 13 operations are now `yes` on Hyperdrive, **under the conditions of that run** (caching enabled, Workers Free, a direct Neon endpoint, 24 sockets, 20 rounds; not covered: caching disabled, the pooled endpoint, other plans, regions or origins): every measurement carries them (`covers`), and the outbox you build returns them as `measuredUnder`. The Worker, the Hyperdrive configuration and the credentials are gone.
 
 ## Licence
 

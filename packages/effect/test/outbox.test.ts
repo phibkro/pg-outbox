@@ -438,8 +438,14 @@ const behindSupavisor = supavisorLayer({
 
 layer(behindHyperdrive)("the mode check on Hyperdrive", (it) => {
   it.effect(
-    "building the outbox on Hyperdrive needs no word from the caller: a recorded run measured every operation",
-    () => Effect.asVoid(make({ outbox: declaration }))
+    "building the outbox on Hyperdrive needs no word from the caller, and the outbox says the run and the conditions its yes stands on",
+    () =>
+      Effect.map(make({ outbox: declaration }), (built) => {
+        assert.strictEqual(built.measuredUnder.length, 1);
+        assert.strictEqual(built.measuredUnder[0]?.on, "2026-10-30");
+        assert.include(built.measuredUnder[0]?.covers ?? "", "caching enabled");
+        assert.include(built.measuredUnder[0]?.covers ?? "", "Not covered:");
+      })
   );
 });
 

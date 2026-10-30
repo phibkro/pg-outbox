@@ -68,6 +68,8 @@ export {
   capCachedRead,
   coverageGaps,
   exercisedBy,
+  describeMeasurement,
+  measuredUnder,
   measurements,
   rowSupport,
   supportGiven,

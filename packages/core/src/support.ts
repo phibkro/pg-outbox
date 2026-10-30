@@ -165,6 +165,9 @@ export const exercisedBy: Readonly<Record<OperationId, readonly string[]>> = {
  * under `docs/evidence/`, which a test reads: it must name every falsifier of `exercisedBy` as passing). The fact belongs in
  * pg-txmode's catalogue, as a `hyperdrive-probe` cell with the same evidence; until that is merged this repository carries it,
  * as it carries `coverageGaps`.
+ *
+ * A `yes` that comes from a measurement is a `yes` **under the conditions of the run**, and `covers` says which: it is shown
+ * wherever the mode check is (`describeMeasurement`, `measuredUnder`), so a caller sees what the answer stands on.
  */
 export interface Measurement {
   readonly mode: ConnectionMode;
@@ -172,7 +175,16 @@ export interface Measurement {
   readonly evidence: string;
   /** The day of the run (UTC, `YYYY-MM-DD`): a run is evidence of its day. */
   readonly on: string;
+  /** The conditions of the run, in words: the settings, the plan, the origin, the size. What it does not say is not covered. */
+  readonly covers: string;
 }
+
+/** What a measurement says about itself, for a message or a log line. */
+export const describeMeasurement = (measurement: Measurement): string =>
+  `measured on ${measurement.on} under: ${measurement.covers} (evidence: ${measurement.evidence})`;
+
+const runCovers =
+  "Hyperdrive caching enabled (its default); Cloudflare Workers Free plan, one Worker placed aws:eu-central-1, one invocation per socket and 24 sockets; a Neon branch's direct endpoint (PostgreSQL 18.6) as the origin; 20 rounds of each race; the suite of 15 falsifiers and 28 controls; no LISTEN and no session advisory lock (excluded by design, F8). Not covered: caching disabled, the pooled Neon endpoint, another plan, region or origin, a long or loaded run.";
 
 /**
  * The recorded runs. The one run of 2026-10-30 (spec 0004: the suite of 15 falsifiers and 28 controls through a deployed Worker,
@@ -181,6 +193,7 @@ export interface Measurement {
  */
 export const measurements: readonly Measurement[] = operationIds.map(
   (operation) => ({
+    covers: runCovers,
     evidence: "docs/evidence/hyperdrive/2026-10-30-pg-outbox-probe.md",
     mode: hyperdrive,
     on: "2026-10-30",
@@ -238,6 +251,29 @@ export const operationSupport = (
   id: OperationId
 ): Support => supportGiven(measurements, mode, id);
 
+/**
+ * The recorded runs that a `yes` of these operations in this mode stands on (the operations and those they may run after
+ * themselves), each once: empty where the catalogue alone vouches for the mode (direct, PgBouncer) or nothing ran.
+ */
+export const measuredUnder = (
+  mode: ConnectionMode,
+  operations: readonly OperationId[]
+): readonly Measurement[] => {
+  const wanted = new Set<string>(
+    operations.flatMap((id) => [id, ...(operationById(id).follows ?? [])])
+  );
+
+  const distinct = new Map<string, Measurement>();
+
+  for (const run of measurements) {
+    if (wanted.has(run.operation) && columnOf(run.mode) === columnOf(mode)) {
+      distinct.set(describeMeasurement(run), run);
+    }
+  }
+
+  return [...distinct.values()];
+};
+
 /** The mode cannot honour the operation, or the catalogue has not verified it there. The message quotes the catalogue. */
 export class UnsupportedOperationError extends Error {
   override readonly name = "UnsupportedOperationError";
@@ -277,8 +313,12 @@ export class UnsupportedOperationError extends Error {
         ? ""
         : `; it may run ${(operation.follows ?? []).join(", ")} after itself`;
 
+    const recorded = measuredUnder(mode, [id])
+      .map((run) => `${run.operation} ${describeMeasurement(run)}`)
+      .join("; ");
+
     super(
-      `${id} is ${support === "no" ? "not available" : "unverified"} on a ${describeMode(mode)} connection${after}; catalogue ${cells}`
+      `${id} is ${support === "no" ? "not available" : "unverified"} on a ${describeMode(mode)} connection${after}; catalogue ${cells}${recorded === "" ? "" : `; recorded runs for this mode: ${recorded}`}`
     );
     this.operation = id;
     this.support = support;

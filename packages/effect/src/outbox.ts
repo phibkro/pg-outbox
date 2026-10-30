@@ -1,4 +1,4 @@
-import { operationIds, refusalOf } from "@pg-outbox/core";
+import { measuredUnder, operationIds, refusalOf } from "@pg-outbox/core";
 import type {
   WithoutClock,
   Buried,
@@ -6,6 +6,7 @@ import type {
   Claimed,
   Counts,
   EnqueueResult,
+  Measurement,
   Now,
   OpenRow,
   OperationId,
@@ -61,6 +62,11 @@ export interface OutboxOptions<Kind extends string, ErrorClass extends string> {
  *   driver's (`SqlClient`'s statements are interruptible, a transaction rolls back).
  */
 export interface EffectOutbox<Kind extends string, ErrorClass extends string> {
+  /**
+   * The recorded runs that a `yes` of the operations in use stands on (empty where the catalogue alone vouches for the mode):
+   * log it or show it where an operator chooses a mode. Each says its date and the conditions it covers.
+   */
+  readonly measuredUnder: readonly Measurement[];
   readonly enqueue: (
     args: WithoutClock<Kind, ErrorClass, "enqueue">
   ) => Effect.Effect<EnqueueResult, SqlError, InTransaction>;
@@ -135,7 +141,9 @@ export const make = <
     const client = yield* TxClient;
     const { outbox } = options;
 
-    for (const id of options.operations ?? operationIds) {
+    const operationsInUse = options.operations ?? operationIds;
+
+    for (const id of operationsInUse) {
       const refused = refusalOf(client.mode, id, {
         allowUnverified: options.allowUnverified === true,
       });
@@ -304,6 +312,7 @@ export const make = <
       enqueue,
       holdClaim,
       markQueued,
+      measuredUnder: measuredUnder(client.mode, operationsInUse),
       open,
       release,
       stale,

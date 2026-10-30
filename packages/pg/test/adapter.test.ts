@@ -97,10 +97,19 @@ describe("construction", () => {
     expect(() => createPgOutbox({ db, outbox })).toThrow(/catalogue/u);
   });
 
-  test("behind Hyperdrive, which a recorded run measured for every operation, the outbox is built without a word from the caller", () => {
-    expect(() =>
-      createPgOutbox({ db: behindHyperdrive(), outbox })
-    ).not.toThrow();
+  test("behind Hyperdrive, which a recorded run measured for every operation, the outbox is built without a word and says what the yes stands on", () => {
+    const behind = createPgOutbox({ db: behindHyperdrive(), outbox });
+
+    expect(behind.measuredUnder).toHaveLength(1);
+    expect(behind.measuredUnder[0]?.covers).toContain("caching enabled");
+    expect(behind.measuredUnder[0]?.covers).toContain("Not covered:");
+    expect(behind.measuredUnder[0]?.on).toBe("2026-10-30");
+  });
+
+  test("where the catalogue alone vouches for the mode, nothing is measured under anything", () => {
+    expect(
+      createPgOutbox({ db: stub().db, outbox }).measuredUnder
+    ).toStrictEqual([]);
   });
 
   test("behind Supavisor every operation is unverified; a subset narrows the check, and allowUnverified accepts it", () => {
