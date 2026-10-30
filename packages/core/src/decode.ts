@@ -10,13 +10,14 @@ import type { Json } from "./results.ts";
 import { ProtocolError } from "./statement.ts";
 import type { RawRow } from "./statement.ts";
 
-/** `int` arrives as a number and `bigint` as text, depending on the driver. */
+/** `int` arrives as a number; `bigint` as text (node-postgres) or as a `bigint` (`@effect/sql-pg`), depending on the driver. */
 const count = z.union([
   z.number().int(),
   z
     .string()
     .regex(/^-?\d+$/u)
     .transform(Number),
+  z.bigint().transform(Number),
 ]);
 
 const id = z.string().regex(/^\d{1,19}$/u);

@@ -1,7 +1,7 @@
 # Provenance: adapted from phibkro/pg-txmode @ 12f1abac1eb9d3ebad7e123a12f56896f896a272 (.github/workflows/checks.yml at spec 0000,
 # f5efb53), which adapted it from reebeat/studio @ d4fd75eaca83b9e8a98f073d5b1d957da5d6b8b8, reebeat/reebeat
 # @ f7c348877585f54b6bf00651608726dd7e5044d3 and phibkro/vektorprogrammet-reimagined @ 797e9e41d96194b9479ff224ac1c40bbc0545888.
-# Deviation from pg-txmode: the header; the submodule checkout (spec 0001, vendor/pg-txmode) and the step "Model" (TLC); the other commands and pins are the same.
+# Deviation from pg-txmode: the header; the submodule checkout (spec 0001, vendor/pg-txmode); the steps "Model" (TLC) and "Effect diagnostics" (spec 0003: `bun run check:effect`); the other commands and pins are the same.
 # Each step calls the root script of the same name (`bun run ready` is their sequence), never its command.
 name: Checks
 
@@ -35,6 +35,9 @@ jobs:
       - name: Vite+ checks
         shell: bash
         run: devenv shell -- bun run check
+      - name: Effect diagnostics
+        shell: bash
+        run: devenv shell -- bun run check:effect
       - name: Exception registry
         shell: bash
         run: devenv shell -- bun run check:exceptions

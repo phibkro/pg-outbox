@@ -242,3 +242,25 @@ describe("decoding", () => {
     });
   });
 });
+
+describe("a driver's integers", () => {
+  test("a bigint column arrives as a number, as text or as a bigint, and decodes the same", () => {
+    const statement = outbox.claimById({ id, leaseMs: 1, now });
+    const step = statement.decode([]);
+
+    if (step.done) {
+      throw new Error("expected a follow-up statement");
+    }
+
+    const answers = [5, "5", 5n].map((held) =>
+      step.next.decode([{ due_ms: 0, held_ms: held, status: "pending" }])
+    );
+
+    for (const answer of answers) {
+      expect(answer).toStrictEqual({
+        done: true,
+        value: { _tag: "Held", remainingMs: 5 },
+      });
+    }
+  });
+});

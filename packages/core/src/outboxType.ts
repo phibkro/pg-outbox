@@ -114,3 +114,10 @@ export type BuilderArgs<
   ErrorClass extends string,
   Operation extends BuilderName,
 > = Parameters<Outbox<Kind, ErrorClass>[Operation]>[0];
+
+/** What a caller passes for one operation when the clock is not its to give: the builder's argument without `now`. */
+export type WithoutClock<
+  Kind extends string,
+  ErrorClass extends string,
+  Operation extends BuilderName,
+> = Omit<BuilderArgs<Kind, ErrorClass, Operation>, "now">;

@@ -2,7 +2,12 @@ export { declareOutbox } from "./outbox.ts";
 
 export type { OutboxConfig, RetryPolicy } from "./outbox.ts";
 
-export type { BuilderArgs, BuilderName, Outbox } from "./outboxType.ts";
+export type {
+  BuilderArgs,
+  BuilderName,
+  Outbox,
+  WithoutClock,
+} from "./outboxType.ts";
 
 export { databaseNow, fixedNow } from "./now.ts";
 
