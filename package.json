@@ -10,7 +10,7 @@
   "type": "module",
   "scripts": {
     "prepare": "vp config --no-agent",
-    "ready": "bun run check && bun run check:exceptions && bun run test && bun run model && bun run build && bun run knip && bun run cpd && bun run secrets",
+    "ready": "bun run check && bun run check:effect && bun run check:exceptions && bun run test && bun run model && bun run build && bun run knip && bun run cpd && bun run secrets",
     "check": "vp check",
     "test": "vp run --no-cache -F '@pg-outbox/*' test",
     "build": "vp run --no-cache -F '@pg-outbox/*' build",
@@ -19,11 +19,14 @@
     "cpd": "jscpd --config .jscpd.json .",
     "secrets": "gitleaks git --config .gitleaks.toml --redact",
     "commitlint": "commitlint",
-    "model": "bun tools/model/run.ts"
+    "model": "bun tools/model/run.ts",
+    "check:effect": "effect-tsgo tsc -p packages/effect"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.3",
     "@commitlint/config-conventional": "21.2.3",
+    "@effect/tsgo": "catalog:",
+    "@phibkro/oxlint-effect-plugin": "0.2.0",
     "jscpd": "5.4.1",
     "knip": "6.41.0",
     "oxlint-plugin-complexity": "4.0.0",

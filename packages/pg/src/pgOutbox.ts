@@ -6,7 +6,7 @@ import {
 } from "@pg-outbox/core";
 import type {
   AckResult,
-  BuilderArgs,
+  WithoutClock,
   BuilderName,
   BuryResult,
   ClaimResult,
@@ -56,7 +56,7 @@ type Call<
   Kind extends string,
   ErrorClass extends string,
   Operation extends BuilderName,
-> = Omit<BuilderArgs<Kind, ErrorClass, Operation>, "now"> & {
+> = WithoutClock<Kind, ErrorClass, Operation> & {
   readonly now?: Now | undefined;
 };
 
@@ -101,7 +101,7 @@ export interface PgOutbox<Kind extends string, ErrorClass extends string> {
   ) => Promise<BuryResult>;
   readonly holdClaim: (
     tx: Transaction,
-    args: BuilderArgs<Kind, ErrorClass, "holdClaim">
+    args: WithoutClock<Kind, ErrorClass, "holdClaim">
   ) => Promise<HoldResult>;
   readonly markQueued: (
     args: Call<Kind, ErrorClass, "markQueued">

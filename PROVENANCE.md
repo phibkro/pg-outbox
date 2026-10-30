@@ -57,3 +57,19 @@ The development lifecycle (spec 0000) is copied from [`phibkro/pg-txmode`](https
 | `packages/pg/*` | none | original. It runs the statements of `@pg-outbox/core` over `@pg-txmode/pg` (pg-txmode `12f1aba`, the submodule); the shape (a client of a mode, a transaction as a parameter, no session API on a pooled mode) follows pg-txmode's `packages/pg` |
 | `vite.config.ts` | as in spec 0001 | `eslint/require-await` is off, as in pg-txmode's `vite.config.ts` (the same two rules conflict) |
 | `tools/quality/test/effectBoundary.test.ts` | as in spec 0001 | adds "an adapter adds no SQL" |
+
+## Added by spec 0003
+
+| File | Source | Deviation |
+| --- | --- | --- |
+| `packages/effect/src/*` | none | original. It runs the statements of `@pg-outbox/core` over `@pg-txmode/effect` (pg-txmode `12f1aba`, the submodule); the brand pattern of its tagged errors (`Schema.TaggedError<Self, { readonly brand: unique symbol }>`) and the use of `TxClient.transaction` follow pg-txmode's `packages/effect/src` |
+| `packages/effect/tsconfig.json` | phibkro/pg-txmode `12f1aba`, `packages/effect/tsconfig.json` | the Effect language service's diagnostics as errors, the same list; `allowedUnstableApis` names the modules this package imports |
+| `packages/effect/vite.config.ts` | phibkro/pg-txmode `12f1aba`, `packages/effect/vite.config.ts` | the test timeouts are those of this repository's other packages (hooks 120 s, tests 300 s; pg-txmode's are 60 s), because each test file starts PostgreSQL and PgBouncer |
+| `packages/effect/test/stack.ts` | the pattern of pg-txmode's `packages/effect/test/stack.ts` (a throwaway server as a layer) | one PostgreSQL, no pooler (the pooled suite starts its own through `@pg-txmode/harness`) |
+| `vite.config.ts` | as in spec 0002 | the Oxlint Effect plugin (`@phibkro/oxlint-effect-plugin` 0.2.0, as in pg-txmode) with its groups for `packages/effect/**`; overrides for the tagged-error file and, for one test module, four `anti-slop` rules (the reason is in the file) |
+| `package.json`, `.github/workflows/checks.yml` | as in spec 0002 | `@effect/tsgo` and the Oxlint Effect plugin as root devDependencies; script `check:effect` in `ready`; the CI step "Effect diagnostics" |
+| `vite.config.ts` (rule overrides) | as above | five rules are off for `packages/effect/**` (round 1 of spec 0003 records them; the reason of each is in the file): `eslint/func-names` (30 errors without the override; `Effect.gen(function* () {})` is anonymous), `typescript/promise-function-async` (29; the language-service diagnostic `asyncFunction` forbids `async`), `unicorn/no-array-method-this-argument` (5; it misreads Effect's data-first `Array.every(xs, fn)`), and for `src/errors.ts` only `eslint/max-classes-per-file` (1) and `unicorn/throw-new-error` (4: a `Schema.TaggedError` body reads as a throw site). Rule settings, not suppression directives |
+| `.agents/skills/verify-pg-outbox/scripts/mutate-effect.sh` | none | original: applies each mutation of spec 0003 to `packages/effect/src`, runs its check, restores the file |
+| `knip.json` | as in spec 0002 | a workspace entry for `packages/effect`; `@effect/language-service` is ignored as a dependency (it is the plugin named in `tsconfig.json`), as in pg-txmode's `knip.json` |
+
+Third-party packages used by spec 0003 (installed, not copied): `effect` 4.1.0, `@effect/sql-pg` 4.1.0, `@effect/vitest` 4.1.0 (MIT); `@effect/tsgo` 0.63.0 and `@phibkro/oxlint-effect-plugin` 0.2.0 (the operator's, as in pg-txmode).

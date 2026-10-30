@@ -20,6 +20,11 @@
     "packages/pg": {
       "entry": ["test/**/*.test.ts"],
       "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "packages/effect": {
+      "entry": ["test/**/*.test.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts"],
+      "ignoreDependencies": ["@effect/language-service"]
     }
   },
   "ignoreBinaries": ["gitleaks", "tlc"],
