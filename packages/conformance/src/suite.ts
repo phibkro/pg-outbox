@@ -14,7 +14,7 @@ import { retention, sweep } from "./housekeeping.ts";
 import { modeCheck, noSessionFeatures } from "./modes.ts";
 import type { Built } from "./mutated.ts";
 import type { Mutation } from "./mutation.ts";
-import { closedSet, dedupe, failureClasses } from "./policy.ts";
+import { closedSet, dedupe, dedupeRace, failureClasses } from "./policy.ts";
 
 /** Every falsifier of spec 0001, in the order of its table. */
 export const falsifiers: readonly Falsifier[] = [
@@ -32,6 +32,7 @@ export const falsifiers: readonly Falsifier[] = [
   closedSet,
   dedupe,
   typedAnswers,
+  dedupeRace,
 ];
 
 export interface Target {

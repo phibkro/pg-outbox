@@ -45,9 +45,7 @@ let db: TxClient | undefined;
 beforeAll(async () => {
   const health = await checkHealth(base, token);
 
-  process.stdout.write(
-    `the origin: database ${health.database}, PostgreSQL ${health.serverVersion}\n`
-  );
+  process.stdout.write(`the origin: PostgreSQL ${health.serverVersion}\n`);
   db = createRemoteClient({
     budget,
     // each concurrent claimer is one session: one invocation of the Worker, one connection of its binding

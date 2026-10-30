@@ -28,8 +28,8 @@ export default Alchemy.Stack(
   { providers: Cloudflare.providers(), state: localState() },
   Effect.gen(function* probe() {
     const database = yield* Cloudflare.Hyperdrive.Connection("Database", {
-      // Hyperdrive does not invalidate cached reads on writes; the probe measures the pooling and the statements, not the cache.
-      caching: { disabled: true },
+      // Caching stays ON, Hyperdrive's default: the library is measured as it would be deployed, with the read cache a write does
+      // not purge. The statements that read call statement_timestamp(), which makes Hyperdrive skip its cache; the run shows it.
       name: "pg-outbox-probe",
       origin: {
         database: yield* Config.NonEmptyString("PROBE_NEON_DATABASE"),

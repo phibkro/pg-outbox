@@ -14,6 +14,7 @@ import {
   tagOf,
 } from "./fixtures.ts";
 import { instantPattern, replacing } from "./mutation.ts";
+import type { Mutation } from "./mutation.ts";
 import type { ErrorClass, Subject } from "./subject.ts";
 
 const dueDate = new RegExp(` AND next_attempt_at <= ${instantPattern}`, "gu");
@@ -233,30 +234,33 @@ export const closedSet: Falsifier = {
   title: "last_error holds only a class of the closed set",
 };
 
+/** No unique index and no conflict target: nothing arbitrates a duplicate. */
+const noArbiter: Mutation = {
+  kind: "all",
+  of: [
+    {
+      kind: "migration",
+      rewrite: (statements) =>
+        statements.filter((statement) => !statement.includes("_dedupe")),
+    },
+    {
+      kind: "statement",
+      operation: "enqueue",
+      rewrite: replacing(
+        / ON CONFLICT \(kind, dedupe_key\) WHERE dedupe_key IS NOT NULL/u,
+        " ON CONFLICT"
+      ),
+    },
+  ],
+};
+
 export const dedupe: Falsifier = {
   controls: [
     {
       describe:
         "no unique index and no conflict target: nothing arbitrates a duplicate",
       id: "no-dedupe-arbiter",
-      mutation: {
-        kind: "all",
-        of: [
-          {
-            kind: "migration",
-            rewrite: (statements) =>
-              statements.filter((statement) => !statement.includes("_dedupe")),
-          },
-          {
-            kind: "statement",
-            operation: "enqueue",
-            rewrite: replacing(
-              / ON CONFLICT \(kind, dedupe_key\) WHERE dedupe_key IS NOT NULL/u,
-              " ON CONFLICT"
-            ),
-          },
-        ],
-      },
+      mutation: noArbiter,
     },
     {
       describe:
@@ -341,4 +345,55 @@ export const dedupe: Falsifier = {
     ).toBe("Enqueued");
   },
   title: "a duplicate (kind, dedupe key) stores one row and answers Duplicate",
+};
+
+/** Enqueues of one message from this many transactions at once. */
+const racers = 10;
+
+export const dedupeRace: Falsifier = {
+  controls: [
+    {
+      describe:
+        "no unique index and no conflict target: concurrent enqueues of one key all store a row",
+      id: "no-dedupe-arbiter-race",
+      mutation: noArbiter,
+    },
+  ],
+  id: "F19",
+  run: async ({ subject, rounds }) => {
+    await subject.migrate();
+
+    const attempts = Math.max(3, Math.floor(rounds / 5));
+
+    for (let round = 1; round <= attempts; round += 1) {
+      const answers = await Promise.all(
+        Array.from(
+          { length: racers },
+          async () =>
+            await subject.transaction(
+              async (tx) =>
+                await subject.enqueue(tx, {
+                  dedupeKey: `race:${round}`,
+                  kind: "Mail",
+                  now: at(),
+                  payload: {},
+                })
+            )
+        )
+      );
+
+      expect(
+        answers.map((answer) => answer._tag).toSorted(),
+        `round ${round}: ${racers} concurrent enqueues of one key`
+      ).toStrictEqual([
+        ...Array.from({ length: racers - 1 }, () => "Duplicate"),
+        "Enqueued",
+      ]);
+      expect(await count(subject, table), `rows after round ${round}`).toBe(
+        round
+      );
+    }
+  },
+  title:
+    "concurrent enqueues of one (kind, dedupe key) store one row: exactly one wins, the rest are Duplicate",
 };

@@ -36,14 +36,14 @@ vitest: the suite, unchanged                   Worker `pg-outbox-probe`
   pgSubject -> createPgOutbox(remote client)     GET /health                              branch `probe/pg-outbox-<date>`
   remote client: a pool of WebSockets   ──────►  GET /session (WebSocket)  ──► pg Client ──► Hyperdrive config ──► its own database
   one socket = one Worker invocation             {id, text, values} → rows | {code, message}  `pg-outbox-probe`        and its own role
-                                                 no SQL of its own, no decisions               caching disabled
+                                                 no SQL of its own, no decisions               caching ENABLED (the default)
 ```
 
 - **One socket is one Worker invocation and one connection of its binding.** A transaction is a run of statements on one socket, exactly as a Worker holds a client for a transaction. A concurrent claimer is another socket, hence another invocation: a Worker invocation can have only six connections *waiting for response headers* at once (Cloudflare's Workers limits), and the Hyperdrive origin pool is about 20 connections on the Free plan (Hyperdrive's limits), so the race of 20 claimers is 20 invocations and the origin pool is where they meet, as in production.
 - **The Worker adds no SQL and decides nothing** (`apps/hyperdrive-probe/src/worker.ts`, `session.ts`): it runs what it is sent and answers rows or a failure with its SQLSTATE. The statements are the core's, the transactions' opening script and retry are `@pg-txmode/core`'s, the control rewrites are applied by the runner before a statement is sent.
 - **The client is a `@pg-txmode/pg` `TxClient`** (`src/remote.ts`) of the mode `hyperdrive` over that pool of sockets, so `pgSubject` (spec 0002) and the whole suite run through it as through any other client. `local.test.ts` runs the suite through it over a local twin of the Worker (`src/localTwin.ts`: the same `openSession` on a WebSocket server of this machine) in front of a PostgreSQL 18 of this machine, as part of `bun run test`: a failure there is a failure of the probe, not of Hyperdrive.
 - **The disposable database.** The operator made the Neon branch `probe/pg-outbox-<date>` of the project `bold-poetry-64036846` with its own database and role and a **24 h expiry**, and put its direct connection string in a file of mode 0600 (`~/.config/pg-outbox-probe/neon-connection-string`). The probe reads the file by parts, never prints it, and deletes it at teardown; the branch expires by itself. The origin of the Hyperdrive configuration is that direct endpoint (the pooled one is a pooler of its own behind Hyperdrive: catalogue row `pooled-endpoint-behind-hyperdrive`).
-- **The infrastructure is two resources** (`deploy/alchemy.run.ts`, Alchemy `2.0.0-beta.84`, `npm view alchemy dist-tags` of 2026-10-30: `latest` beta.84, `next` beta.72): the Worker `pg-outbox-probe` (compatibility date 2026-10-01, flags `nodejs_compat` and `enable_request_signal`, placed next to the Neon region) and the Hyperdrive configuration `pg-outbox-probe` (caching disabled). State is a local file. **The stack lives in `apps/hyperdrive-probe/deploy/`, outside the workspace, with its own `package.json` and lockfile**: Alchemy beta.84 imports `effect/Crypto`, which `effect` 4.1.0 (this repository's version) no longer has, so it needs `effect` 4.0.7 (and `@effect/platform-node-shared` 4.0.7, pinned by an override). The repository stays on 4.1.0.
+- **The infrastructure is two resources** (`deploy/alchemy.run.ts`, Alchemy `2.0.0-beta.84`, `npm view alchemy dist-tags` of 2026-10-30: `latest` beta.84, `next` beta.72): the Worker `pg-outbox-probe` (compatibility date 2026-10-01, flags `nodejs_compat` and `enable_request_signal`, placed next to the Neon region) and the Hyperdrive configuration `pg-outbox-probe` with **caching enabled, Hyperdrive's default**: the library runs behind Hyperdrive as deployed, with its read cache on; the run measures the writes and claims, and whether the reads (`classify`, `stale`, `counts`, `open`, which call `statement_timestamp()`, a function that makes Hyperdrive skip its cache) are ever served stale. A run with the cache off would settle only the writes, and `claimById` follows `classify`, a read. State is a local file. **The stack lives in `apps/hyperdrive-probe/deploy/`, outside the workspace, with its own `package.json` and lockfile**: Alchemy beta.84 imports `effect/Crypto`, which `effect` 4.1.0 (this repository's version) no longer has, so it needs `effect` 4.0.7 (and `@effect/platform-node-shared` 4.0.7, pinned by an override). The repository stays on 4.1.0.
 - **Access.** The Worker's address is public. Every route needs the run's token (a random value written to a 0600 file by `up`), carried in `Sec-WebSocket-Protocol` for the socket and for `/health`; a request without it answers 401 and touches no database.
 - **The budget.** The Workers Free plan counts every statement through Hyperdrive, cached or not: 100,000 a day (Cloudflare's Hyperdrive pricing). The runner counts each statement before it sends it, keeps the day's count in a file, and **stops at 80,000** with `BudgetExceededError`. The default is 20 rounds of a race, which this spec estimates (and the first local run measures) well under that.
 
@@ -56,6 +56,27 @@ vitest: the suite, unchanged                   Worker `pg-outbox-probe`
 - **No second copy of the suite.** The app imports `pgSubject` from `packages/pg/test/` and `defineSubjectConformance` from `@pg-outbox/conformance`; it adds a transport and nothing else.
 - The app is a private workspace package, `apps/*` is a new category beside `packages/*` and `tools/*`: it depends on libraries and on the harness, nothing depends on it. Its Worker bundle imports `pg` and `zod` only.
 
+## What a passing run settles
+
+The falsifiers that exercise each operation are listed in `measuredOn` (core). An operation is measured when all of its falsifiers passed through the Worker **with caching enabled**:
+
+| Operation | Falsifiers |
+| --- | --- |
+| `enqueue` | F1, F14, **F19 (new: ten concurrent transactions enqueue one key; exactly one wins)** |
+| `claimById` | F2, F3, F6, F7, F15 |
+| `classify` | F2, F4, F6, F7, F15 |
+| `claimBatch` | F2, F7 |
+| `ack` | F3, F5, F15 |
+| `release` | F3, F7, F15 |
+| `bury` | F3, F7, F10 |
+| `holdClaim` | F3, F4 |
+| `markQueued`, `stale` | F9 |
+| `cleanup` | F10, F14 |
+| `counts` | F10 |
+| `open` | F15 (new in this spec: the report of open rows) |
+
+The table is not a claim: `packages/conformance/test/exercised.test.ts` runs each falsifier once and fails when a listed operation's statement was not sent by it (the first draft of this table was wrong in four places, found that way: `F8` sends everything but asserts only a lint, so it is not listed; `open` had no behavioural falsifier at all). F19 and the `open` check of F15 are new in this spec: the suite had no concurrent `ON CONFLICT DO NOTHING` (F14 is sequential), which is the gap the catalogue's own note names, and nothing that asserted what `open` returns. They have controls (`no-dedupe-arbiter-race`: no unique index, so every racer stores a row; `open-lists-settled`) and run on every subject; the suite is now 15 falsifiers and 28 controls, 43 tests per target.
+
 ## What is built
 
 | Part | Content |
@@ -64,6 +85,7 @@ vitest: the suite, unchanged                   Worker `pg-outbox-probe`
 | `apps/hyperdrive-probe/test` | `local.test.ts` (the suite through the twin; part of `bun run test`), `hyperdrive.test.ts` (the suite through a Worker; run only by `probe`), unit tests of the budget and the protocol |
 | `apps/hyperdrive-probe/deploy` | `alchemy.run.ts`, its own `package.json` and lockfile |
 | `apps/hyperdrive-probe/scripts` | `probe.ts` (`local`, `up`, `run`, `record`, `down`, `status`), `spike.ts` (`select 1` and a transaction under workerd), `wrangler.dev.jsonc` |
+| `packages/conformance` | F19 and its control |
 | core | `measuredOn` and the lift of an `unverified` cell by recorded evidence (after the run) |
 | `docs/evidence/hyperdrive/` | the raw output of the run (after the run) |
 | gates | `packages/pg/test/pgSubject.ts` takes `allowUnverified`; the pooler-fact test and the boundary tests know the new category; the verify skill |

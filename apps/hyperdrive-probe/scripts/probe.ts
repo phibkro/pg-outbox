@@ -9,12 +9,14 @@ import {
   chmodSync,
   existsSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import path from "node:path";
+import { stripVTControlCharacters } from "node:util";
 
 import { startPostgres } from "@pg-txmode/harness";
 import { z } from "zod";
@@ -22,6 +24,7 @@ import { z } from "zod";
 import { startWorkerd } from "../src/workerd.ts";
 
 const app = path.resolve(import.meta.dirname, "..");
+const root = path.resolve(app, "../..");
 const dot = path.join(app, ".probe");
 const tokenFile = path.join(dot, "token");
 const stateFile = path.join(dot, "state.json");
@@ -144,7 +147,14 @@ const alchemy = (
 const vitest = (env: Record<string, string>, output: string): number => {
   const result = spawnSync(
     "bunx",
-    ["vp", "test", "run", "--config", "vite.probe.config.ts"],
+    [
+      "vp",
+      "test",
+      "run",
+      "--config",
+      "vite.probe.config.ts",
+      "--reporter=verbose",
+    ],
     {
       cwd: app,
       encoding: "utf-8",
@@ -164,6 +174,37 @@ const runEnv = (url: string) => ({
   PG_OUTBOX_PROBE_URL: url,
   PG_OUTBOX_ROUNDS: process.env.PG_OUTBOX_ROUNDS ?? "20",
 });
+
+/** What a recorded run must not carry: a Worker address, a host, an identifier or a secret. */
+const scrub = (text: string): string =>
+  stripVTControlCharacters(text)
+    .replaceAll(/https?:\/\/[^\s"')]+/gu, "<url>")
+    .replaceAll(/wss?:\/\/[^\s"')]+/gu, "<url>")
+    .replaceAll(/\b[0-9a-f]{32,}\b/gu, "<hex>")
+    .replaceAll(/[\w-]+\.neon\.tech/gu, "<host>");
+
+/** The recorded run: what ran, with what, and the suite's own lines. The format of pg-txmode's recorded run of another project. */
+const evidenceOf = (raw: string, day: string): string =>
+  [
+    "# Recorded run through Cloudflare Hyperdrive: pg-outbox, spec 0004",
+    "",
+    "| | |",
+    "| --- | --- |",
+    `| Date (UTC) | ${day} |`,
+    `| Commit | ${spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf-8" }).stdout.trim()} |`,
+    "| What ran | the conformance suite of pg-outbox (spec 0001), unchanged, through the `pg` adapter over a client whose statements run in a Worker deployed on Cloudflare; the Worker's only database address is a Hyperdrive binding, in front of a disposable Neon branch (PostgreSQL) |",
+    "| Worker compatibility | date `2026-10-01`, flags `nodejs_compat`, `enable_request_signal` |",
+    "| Hyperdrive caching | **enabled** (Hyperdrive's default) |",
+    `| Rounds of a race | ${process.env.PG_OUTBOX_ROUNDS ?? "20"} |`,
+    "| Left out | the Worker's address, the Hyperdrive and Neon identifiers, the host, the token |",
+    "",
+    "Hyperdrive caching: enabled",
+    "",
+    "```text",
+    scrub(raw).trim(),
+    "```",
+    "",
+  ].join("\n");
 
 const stamp = (): string => new Date().toISOString().replaceAll(/[:.]/gu, "-");
 
@@ -245,7 +286,35 @@ const commands = {
       await postgres.stop();
     }
   },
-  record: async () => await Promise.resolve(0),
+  record: async () => {
+    const outputs = readdirSync(dot)
+      .filter((file) => file.startsWith("run-"))
+      .toSorted();
+
+    const latest = outputs.at(-1);
+
+    if (latest === undefined) {
+      say("no run to record: bun run probe run first");
+
+      return 1;
+    }
+
+    const day = new Date().toISOString().slice(0, 10);
+
+    const target = path.join(
+      root,
+      `docs/evidence/hyperdrive/${day}-pg-outbox-probe.md`
+    );
+
+    mkdirSync(path.dirname(target), { recursive: true });
+    writeFileSync(
+      target,
+      evidenceOf(readFileSync(path.join(dot, latest), "utf-8"), day)
+    );
+    say(`recorded: ${path.relative(root, target)}`);
+
+    return 0;
+  },
   run: async () => {
     const { url } = state.parse(JSON.parse(readFileSync(stateFile, "utf-8")));
     const output = path.join(dot, `run-${stamp()}.txt`);
