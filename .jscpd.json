@@ -4,5 +4,5 @@
   "format": ["typescript"],
   "reporters": ["console"],
   "gitignore": true,
-  "ignore": ["**/node_modules/**", ".worktrees/**"]
+  "ignore": ["**/node_modules/**", ".worktrees/**", "vendor/**"]
 }

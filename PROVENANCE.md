@@ -27,3 +27,25 @@ The development lifecycle (spec 0000) is copied from [`phibkro/pg-txmode`](https
 ## Licence texts
 
 `LICENSE` is the Apache License 2.0, verbatim from <https://www.apache.org/licenses/LICENSE-2.0.txt> (SHA-256 `cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30`, 2026-10-29). `NOTICE` names the copyright holder.
+
+## Added by spec 0001
+
+| File | Source | Deviation |
+| --- | --- | --- |
+| `vendor/pg-txmode` | [`phibkro/pg-txmode`](https://github.com/phibkro/pg-txmode) `12f1abac1eb9d3ebad7e123a12f56896f896a272` (Apache-2.0, the operator's), a git submodule | a stopgap until pg-txmode publishes (spec 0001, "Dependency on pg-txmode"); its `packages/*` are workspaces here, and its root `catalog` is repeated in this `package.json` |
+| `.github/workflows/checks.yml` | as in spec 0000 | `submodules: true` and the step `bun run model` |
+| `vite.config.ts`, `knip.json`, `.jscpd.json` | as in spec 0000 | the submodule is ignored (`vendor/**`); knip's `catalog` check is off (the vendored manifests use the entries); the lint rules that ask for loops over `await`, no promise constructor and no `.then` are off for `packages/conformance` and tests, as in pg-txmode's `vite.config.ts` for its harness and tests |
+| `devenv.nix` | as in spec 0000 | `tlaplus` (TLC 2.19) and `jre8`, with the Java heap capped; vektorprogrammet-reimagined keeps the same two packages in a `formal` profile (`devenv.nix`, `profiles.formal`) |
+| `tools/quality/test/effectBoundary.test.ts` | as in spec 0000 | adds the boundary of the core (`@pg-txmode/core` and `zod` only) |
+| `tools/quality/test/manifest.ts` | none | original (the schema of a manifest, shared by the two boundary tests) |
+| `package.json` | as in spec 0000 | `workspaces` list the submodule's packages; `test` and `build` run only `@pg-outbox/*`; `catalog` is pg-txmode's; script `model` and its place in `ready` |
+| `model/ClaimFence.tla`, `cases.json`, `confirmed.json`, `tools/model/*` | none | original. The method (a TLA+ model of the statements, broken variants that TLC must reject, reach cases, a digest of the covered files that fails the run when the code moves) is that of `phibkro/vektorprogrammet-reimagined`'s skill `verify-membership-writes` (`run.sh`, `SKILL.md`, coverage block) at `3aec40b`; no file of it is copied |
+| `packages/core/*`, `packages/conformance/*` | none | original. The protocol and its guarantees LS1 to LS5 are those of `phibkro/vektorprogrammet-reimagined` `packages/db/src/repositories/outbox.ts` and `docs/system/store-guarantees.md` at `3aec40b`; the statements are written anew (claim by id, fence by token, hold by `FOR NO KEY UPDATE` are the same constructs), and pg-txmode's `outboxDelivery` pattern (`packages/core/src/patterns.ts` at `12f1aba`) is the other source of the SQL |
+
+## Third-party packages used by spec 0001 (installed, not copied)
+
+| Package | Licence | Used for |
+| --- | --- | --- |
+| `zod` 4.6.7 | MIT | decoding result rows (`@pg-outbox/core`), the shape of `model/cases.json` (`tools/model`) |
+| `pg` 8.23.1, `libpg-query` 18.2.1, `oxc-parser` 0.153.0 | MIT | through pg-txmode's harness and lint (the conformance suite); not dependencies of `@pg-outbox/core` |
+| TLA+ tools 1.7.4 (TLC 2.19), OpenJDK 8 | MIT (TLA+ tools), GPL-2.0 with the Classpath Exception (OpenJDK) | the model, from nixpkgs through `devenv.nix`; not redistributed |

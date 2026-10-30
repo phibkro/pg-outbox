@@ -26,15 +26,38 @@ export default defineConfig({
   // Prose is written by hand: Oxfmt re-wraps Markdown and joins hard line breaks, which changes meaning.
   fmt: {
     ...ultraciteFmt,
-    ignorePatterns: [...(ultraciteFmt.ignorePatterns ?? []), "**/*.md"],
+    ignorePatterns: [
+      ...(ultraciteFmt.ignorePatterns ?? []),
+      "**/*.md",
+      "vendor/**",
+    ],
   },
   lint: {
     extends: [core, antiSlop],
+    ignorePatterns: ["vendor/**"],
     jsPlugins: [
       { name: "vite-plus", specifier: "vite-plus/oxlint-plugin" },
       { name: "complexity", specifier: "oxlint-plugin-complexity" },
     ],
     options: { typeAware: true, typeCheck: true },
+    overrides: [
+      {
+        // The conformance suite and every test drive a server through sequential steps: each step waits for the one
+        // before it (a transaction's statements, a race's rounds, a drain that stops at the first empty answer), and a
+        // step that fails is compared, not rethrown. The rules below ask for loops over `await`, for no promise
+        // constructor and for no `.then`, which these files cannot satisfy without hiding the order of the steps.
+        files: ["packages/conformance/**", "**/test/**"],
+        rules: {
+          "eslint/no-await-in-loop": "off",
+          "eslint/no-promise-executor-return": "off",
+          "node/callback-return": "off",
+          "promise/avoid-new": "off",
+          "promise/prefer-await-to-callbacks": "off",
+          "promise/prefer-await-to-then": "off",
+          "unicorn/no-array-reduce": "off",
+        },
+      },
+    ],
     rules: {
       "complexity/complexity": ["error", { cognitive: 15 }],
       "no-restricted-imports": [

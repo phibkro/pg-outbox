@@ -4,8 +4,22 @@
     "tools/quality": {
       "entry": ["checkExceptions.ts"],
       "project": ["*.ts", "test/**/*.ts"]
+    },
+    "packages/core": {
+      "entry": ["test/**/*.test.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "packages/conformance": {
+      "entry": ["test/**/*.test.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "tools/model": {
+      "entry": ["run.ts", "test/**/*.test.ts"],
+      "project": ["*.ts", "test/**/*.ts"]
     }
   },
-  "ignoreBinaries": ["gitleaks"],
-  "ignoreDependencies": ["vite"]
+  "ignoreBinaries": ["gitleaks", "tlc"],
+  "ignoreDependencies": ["vite"],
+  "ignoreWorkspaces": ["vendor/**"],
+  "exclude": ["catalog"]
 }
