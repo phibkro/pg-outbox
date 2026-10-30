@@ -36,7 +36,8 @@ pg-txmode (`@pg-txmode/core`, `pg`, `effect`, `lint`, `harness`) comes from the 
 3. Spec 0002: the `pg` adapter. Merged.
 4. Spec 0003: the Effect adapter. Merged.
 5. Spec 0004: the Hyperdrive probe (`apps/hyperdrive-probe`): the whole suite through a Worker and Hyperdrive in front of a throwaway Neon branch. Merged. It ran once, on 2026-10-30, and the raw output is under `docs/evidence/hyperdrive/`: the suite (15 falsifiers, 28 controls) passed 43 of 43 through Hyperdrive with caching enabled, twice, after two earlier runs found a defect of the suite (its own reads were served from the cache) and one lost connection. All 13 operations are now `yes` on Hyperdrive, **under the conditions of that run** (caching enabled, Workers Free, a direct Neon endpoint, 24 sockets, 20 rounds; not covered: caching disabled, the pooled endpoint, other plans, regions or origins): every measurement carries them (`covers`), and the outbox you build returns them as `measuredUnder`. The Worker, the Hyperdrive configuration and the credentials are gone.
-6. Spec 0006: the npm release path (`@pg-outbox/core`, `pg`, `effect` as `0.1.0-alpha.N` under the tag `alpha`, a manual workflow, Changesets for versions only). In review; nothing is published, and no version is bumped by it. Each package's README says what a Hyperdrive `yes` covers.
+6. Spec 0005: pg-txmode from the registry at one exact alpha version; the submodule is gone. Merged.
+7. Spec 0006: the npm release path (`@pg-outbox/core`, `pg`, `effect` as `0.1.0-alpha.N` under the tag `alpha`, a manual workflow, Changesets for versions only). In review; nothing is published, and no version is bumped by it. Each package's README says what a Hyperdrive `yes` covers.
 
 ## Licence
 
