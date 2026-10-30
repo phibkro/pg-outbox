@@ -27,7 +27,7 @@ devenv shell -- bun run model           # TLC: one line per case, the counterexa
 PG_OUTBOX_ROUNDS=300 devenv shell -- bash -c 'cd packages/conformance && bunx vp test run'
 ```
 
-pg-txmode (`@pg-txmode/core`, `pg`, `effect`, `lint`, `harness`) comes from the npm registry at one exact alpha version, `0.1.0-alpha.0` (spec 0005; an alpha promises nothing between versions, so no range). There is no submodule.
+pg-txmode (`@pg-txmode/core`, `pg`, `effect`, `lint`, `harness`) comes from the npm registry at one exact alpha version, `0.1.0-alpha.1` (spec 0005; an alpha promises nothing between versions, so no range). There is no submodule.
 
 ## Roadmap
 

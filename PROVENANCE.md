@@ -92,9 +92,9 @@ pg-txmode is a dependency from the npm registry, not a submodule. Nothing of it 
 
 | File | Source | Deviation |
 | --- | --- | --- |
-| `@pg-txmode/core`, `pg`, `effect`, `lint`, `harness` | [`phibkro/pg-txmode`](https://github.com/phibkro/pg-txmode) `0.1.0-alpha.0` from the npm registry (Apache-2.0, the operator's; provenance attached to the published packages) | exact version in every manifest; replaces `vendor/pg-txmode` (the submodule at `12f1aba`), which spec 0001 named a stopgap |
+| `@pg-txmode/core`, `pg`, `effect`, `lint`, `harness` | [`phibkro/pg-txmode`](https://github.com/phibkro/pg-txmode) `0.1.0-alpha.1` from the npm registry (Apache-2.0, the operator's; provenance attached to the published packages) | exact version in every manifest; replaces `vendor/pg-txmode` (the submodule at `12f1aba`), which spec 0001 named a stopgap |
 | `package.json`, `packages/*/package.json`, `apps/hyperdrive-probe/package.json`, `bun.lock` | as in spec 0004 | `workspaces` no longer list pg-txmode's packages; the `catalog` lost `libpg-query` and `@effect/platform-node` |
 | `.github/workflows/checks.yml`, `vite.config.ts`, `knip.json`, `.jscpd.json` | as in spec 0004 | no submodule checkout; no `vendor/**` exception |
 | `tools/quality/test/pgTxmode.test.ts` | none | original: the pin is one exact version everywhere and no submodule is left |
 
-The rows of spec 0001 and later that say "the submodule" for `packages/pg` and `packages/effect` read "pg-txmode `12f1aba`" as their design source; their dependency is now the published `0.1.0-alpha.0`.
+The rows of spec 0001 and later that say "the submodule" for `packages/pg` and `packages/effect` read "pg-txmode `12f1aba`" as their design source; their dependency is now the published `0.1.0-alpha.1`.

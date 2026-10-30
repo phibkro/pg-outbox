@@ -11,7 +11,7 @@
     "build": "vp pack"
   },
   "dependencies": {
-    "@pg-txmode/core": "0.1.0-alpha.0",
+    "@pg-txmode/core": "0.1.0-alpha.1",
     "zod": "catalog:"
   },
   "devDependencies": {

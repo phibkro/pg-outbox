@@ -12,9 +12,9 @@
   },
   "dependencies": {
     "@pg-outbox/core": "workspace:*",
-    "@pg-txmode/core": "0.1.0-alpha.0",
-    "@pg-txmode/harness": "0.1.0-alpha.0",
-    "@pg-txmode/lint": "0.1.0-alpha.0",
+    "@pg-txmode/core": "0.1.0-alpha.1",
+    "@pg-txmode/harness": "0.1.0-alpha.1",
+    "@pg-txmode/lint": "0.1.0-alpha.1",
     "vite-plus": "catalog:"
   },
   "devDependencies": {
