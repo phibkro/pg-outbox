@@ -109,11 +109,16 @@ export default defineConfig({
         },
       },
       {
-        // The conformance suite and every test drive a server through sequential steps: each step waits for the one
+        // The conformance suite, the probe app (a socket pool over a Worker: a promise per socket event, a waiting list of
+        // resolvers) and every test drive a server through sequential steps: each step waits for the one
         // before it (a transaction's statements, a race's rounds, a drain that stops at the first empty answer), and a
         // step that fails is compared, not rethrown. The rules below ask for loops over `await`, for no promise
         // constructor and for no `.then`, which these files cannot satisfy without hiding the order of the steps.
-        files: ["packages/conformance/**", "**/test/**"],
+        files: [
+          "packages/conformance/**",
+          "apps/hyperdrive-probe/**",
+          "**/test/**",
+        ],
         rules: {
           "eslint/no-await-in-loop": "off",
           "eslint/no-promise-executor-return": "off",

@@ -73,3 +73,15 @@ The development lifecycle (spec 0000) is copied from [`phibkro/pg-txmode`](https
 | `knip.json` | as in spec 0002 | a workspace entry for `packages/effect`; `@effect/language-service` is ignored as a dependency (it is the plugin named in `tsconfig.json`), as in pg-txmode's `knip.json` |
 
 Third-party packages used by spec 0003 (installed, not copied): `effect` 4.1.0, `@effect/sql-pg` 4.1.0, `@effect/vitest` 4.1.0 (MIT); `@effect/tsgo` 0.63.0 and `@phibkro/oxlint-effect-plugin` 0.2.0 (the operator's, as in pg-txmode).
+
+## Added by spec 0004
+
+| File | Source | Deviation |
+| --- | --- | --- |
+| `apps/hyperdrive-probe/src/*`, `test/*`, `scripts/probe.ts` | none | original. The shape (the Worker's only database address is the binding; a client is opened inside the handler; the runner compares) is that of pg-txmode's `docs/wizard/hyperdrive-probe.md` at `12f1aba`; the compatibility flags and the placement next to the database follow the recorded run in `docs/evidence/hyperdrive/vektorprogrammet-reimagined-0000-results.md` |
+| `apps/hyperdrive-probe/deploy/alchemy.run.ts` | the Hyperdrive configuration and Worker declarations of `phibkro/vektorprogrammet-reimagined` `apps/web/alchemy.run.ts` at `1104c30` | one Worker and one Hyperdrive configuration only; local state; its own manifest and lockfile (Alchemy `2.0.0-beta.84` with `effect` 4.0.7) |
+| `apps/hyperdrive-probe/scripts/wrangler.dev.jsonc` | Cloudflare's `wrangler` configuration format | a local Hyperdrive binding for the workerd run |
+| `vite.config.ts`, `knip.json`, `.gitignore`, `package.json` | as in spec 0003 | the new category `apps/*` (workspaces); the app's promise-rule override (a promise per socket event); knip's workspace entry; `.probe/` and `.alchemy/` ignored |
+| `tools/quality/test/effectBoundary.test.ts` | as in spec 0003 | scans `apps/` too; an app's `deploy/` directory may import Effect (Alchemy) |
+
+Third-party packages used by spec 0004 (installed, not copied): `ws` 8.22.0 (MIT), `wrangler` 4.156.0 through `bunx` (Apache-2.0 or MIT), `@cloudflare/workers-types` 5.20261030.1 (Apache-2.0 or MIT), and in `deploy/`: `alchemy` and `@alchemy.run/cloudflare` 2.0.0-beta.84 (Apache-2.0), `effect` 4.0.7 (MIT).

@@ -25,6 +25,15 @@
       "entry": ["test/**/*.test.ts"],
       "project": ["src/**/*.ts", "test/**/*.ts"],
       "ignoreDependencies": ["@effect/language-service"]
+    },
+    "apps/hyperdrive-probe": {
+      "entry": [
+        "test/**/*.test.ts",
+        "scripts/spike.ts",
+        "src/worker.ts",
+        "vite.probe.config.ts"
+      ],
+      "project": ["src/**/*.ts", "scripts/**/*.ts", "test/**/*.ts"]
     }
   },
   "ignoreBinaries": ["gitleaks", "tlc"],

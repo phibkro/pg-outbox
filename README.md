@@ -35,7 +35,7 @@ PG_OUTBOX_ROUNDS=300 devenv shell -- bash -c 'cd packages/conformance && bunx vp
 2. Spec 0001: the core, the schema, the model and the conformance suite. In review.
 3. Spec 0002: the `pg` adapter. In review.
 4. Spec 0003: the Effect adapter. In review.
-5. Hyperdrive: pg-txmode's deployed probe Worker needs the operator's Cloudflare credentials; until it runs, every Hyperdrive cell is `unverified`.
+5. Spec 0004: the Hyperdrive probe (`apps/hyperdrive-probe`): the whole suite through a Worker and Hyperdrive in front of a throwaway Neon branch. The runner, the Worker and the suite pass on this machine (a local twin of the Worker, and the real Worker under workerd); the deployed run needs the operator's Cloudflare credentials, and until it has run and its output is recorded under `docs/evidence/hyperdrive/`, every Hyperdrive cell is `unverified`.
 
 ## Licence
 

@@ -9,6 +9,7 @@ pg-outbox is a narrow Postgres outbox with a client-neutral core and thin `pg` a
 Next:
 
 - Review spec 0000, then merge it with `merge.sh` once a round passes; retarget the stacked PR of each spec above it to the branch below it, up the stack (0001, 0002, 0003).
+- Spec 0004 (the Hyperdrive probe): the deployed run waits for a working Cloudflare credential for the profile `default` (its OAuth login is expired); everything that runs on this machine is built and passes.
 - After the merges: the replacement of `vendor/pg-txmode` (spec 0001) once pg-txmode publishes, with the operator's authority.
 
 Blocked:
