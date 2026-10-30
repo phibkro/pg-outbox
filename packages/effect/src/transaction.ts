@@ -15,7 +15,7 @@ const proofBrand: unique symbol = Symbol("@pg-outbox/effect/InTransaction");
  * nothing else. A program that calls `enqueue` outside `transaction` has an unsatisfied requirement and does not run (it does
  * not compile when it is run through a typed entry point). The value's only member is keyed by a symbol that this module does
  * not export, so it cannot be written without a cast; and `enqueue` checks at run time that a transaction of its client is
- * open (a forged proof is a defect: `NotInTransactionDefect`).
+ * open (a proof that outlived its transaction, or was forged with a cast, is a defect: `NotInTransactionDefect`).
  */
 export class InTransaction extends Context.Service<
   InTransaction,

@@ -32,7 +32,7 @@ export class OperationRefusedError extends Schema.TaggedError<
 
 /**
  * A defect, not an expected failure: `enqueue` or `holdClaim` ran with the `InTransaction` proof but no transaction of this
- * client is open (a proof forged by hand, or one from another client). The type makes it unreachable; this is the check
+ * client is open (a proof that outlived its transaction, or one forged with a cast). The type makes it unreachable; this is the check
  * behind the type.
  */
 export class NotInTransactionDefect extends Schema.TaggedError<
