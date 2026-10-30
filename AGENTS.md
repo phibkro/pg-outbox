@@ -27,7 +27,7 @@ Every gate is a root script in `package.json`; `bun run ready` runs them in this
 | --- | --- | --- | --- | --- |
 | Commit message | commitlint (`.vite-hooks/commit-msg`) | every commit | a message that is not a Conventional Commit | `git commit -m "stuff"` |
 | Secrets, staged | gitleaks on staged blobs (`.vite-hooks/pre-commit`) | every commit | a secret in a staged file | stage a file with a fake key in a well-known format |
-| Format and lint, staged | `vp staged` (`vp check --fix`, `.vite-hooks/pre-commit`) | every commit | format drift, lint errors | stage a file with a `console.log` and an `any` parameter |
+| Format and lint, staged | `vp staged` (`vp check --fix`, `.vite-hooks/pre-commit`) | every commit | format drift, lint errors | stage a file with an `any` parameter |
 | Tests | `bun run test` (`.vite-hooks/pre-push`) | every push, `ready`, CI | a failing test: the exception registry, the review record, the headroom gate, the Effect boundary | break an assertion in `tools/quality/test/headroom.test.ts` |
 | Format, lint, types | `bun run check` (`vp check`) | `ready`, CI | Oxfmt drift; Oxlint with Ultracite and its anti-slop rules, cognitive complexity above 15; type errors (type-aware via tsgolint) | a function with complexity 16 |
 | Exception registry | `bun run check:exceptions` | `ready`, CI | a suppression directive without a registry entry; a registry entry without a live suppression | add `// oxlint-disable-next-line <rule>` with no entry |

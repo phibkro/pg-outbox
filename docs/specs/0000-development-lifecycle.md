@@ -1,6 +1,6 @@
 # 0000 Development lifecycle and scaffold
 
-Status: **spec** (frozen when its PR opens). Date: 2026-10-29. Decided by: the operator's decision of 2026-10-29 ("Build the narrow core in its own public repo (phibkro/pg-outbox)", operator log `reebeat-intent-sources/operator-decisions-2026-10.md`, line 112) and the assignment that authorised creating the public repository `phibkro/pg-outbox` (Apache-2.0, Copyright 2026 Philip Bjørknes Krogh).
+Status: **spec** (frozen when its PR opens). Date: 2026-10-29. Decided by: the operator's decision of 2026-10-29 to build the narrow core in its own public repository, `phibkro/pg-outbox`, and the assignment that authorised creating it (Apache-2.0, Copyright 2026 Philip Bjørknes Krogh).
 Binding for: every later PR in this repository. Implemented by the PR that carries this file.
 Mirrors: [pg-txmode spec 0000](https://github.com/phibkro/pg-txmode/blob/12f1abac1eb9d3ebad7e123a12f56896f896a272/docs/specs/0000-development-lifecycle.md), which mirrors reebeat's. Read them for the reasons; this file records what is the same, what differs and why.
 
@@ -65,7 +65,7 @@ Each falsifier has a negative control that is run and observed to fail, with the
 |---|---|---|---|
 | F1 | `bun run ready` exits 0 on a clean tree of the PR head | `ready` | F2 to F5, F7, F10 each make `ready` or a hook exit non-zero where it is the gate |
 | F2 | A commit message that is not a Conventional Commit is rejected | `commit-msg` | `git commit -m "stuff"` is refused with the commitlint reason; `git commit -m "chore: x"` is accepted |
-| F3 | A lint error in a staged file blocks the commit | `pre-commit` (`vp staged`) | Stage a file with `console.log` and an `any` parameter; the commit is refused |
+| F3 | A lint error in a staged file blocks the commit | `pre-commit` (`vp staged`) | Stage a file with an `any` parameter; the commit is refused |
 | F4 | A secret in a staged file blocks the commit | `pre-commit` (gitleaks) | Stage a file holding a synthetic key in a well-known format (written only to the scratch copy); the commit is refused |
 | F5 | An `oxlint-disable` without a registry entry fails `check:exceptions` | `check:exceptions` | Add `// oxlint-disable-next-line <rule>` without an entry: exits non-zero and names the file and line; remove the directive again: exits 0 |
 | F6 | CI runs the gates on every PR and fails when one fails | `checks.yml` | This PR shows a green `checks` run; a throwaway PR with one unused file (a knip violation, which passes every hook) shows a red one (closed, not merged) |
@@ -102,3 +102,4 @@ Each falsifier has a negative control that is run and observed to fail, with the
 Dated entries. A spec is revised only here; its text above is never edited silently after the PR opens. Before the PR opens, the plan may change freely as the build teaches; a change that alters the journey, scope or a falsifier gets an entry anyway.
 
 - **2026-10-29, plan written** with the build: pg-txmode's lifecycle at `12f1aba` copied, names changed, the pooler-fact test widened.
+- **2026-10-30, review round 1** (three wording fixes, no change to a gate): (1) the "Decided by" line named a private local file of the operator; it now states the decision itself. (2) F3's control said a staged file with `console.log` and an `any` parameter is refused; only the `any` parameter is the error that was observed (`typescript(no-explicit-any)`), so the control now names that alone. (3) F10's boundary is shown on both sides: a function of 15 sequential `if` statements raises no `complexity` error and one of 16 raises `Cognitive Complexity of 16. Maximum allowed is 15.` (PR body, Falsifiers).
