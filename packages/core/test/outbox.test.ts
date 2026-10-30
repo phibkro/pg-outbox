@@ -8,6 +8,7 @@ import {
   operationIds,
   ProtocolError,
 } from "../src/index.ts";
+import type { RawValue } from "../src/index.ts";
 
 const outbox = declareOutbox({
   errorClasses: ["timeout", "rejected"],
@@ -243,18 +244,20 @@ describe("decoding", () => {
   });
 });
 
+/** What the follow-up read of `claimById` decodes to when the driver gives `held` for the held time. */
+const decodeHeld = (held: RawValue) => {
+  const step = outbox.claimById({ id, leaseMs: 1, now }).decode([]);
+
+  if (step.done) {
+    throw new Error("expected a follow-up statement");
+  }
+
+  return step.next.decode([{ due_ms: 0, held_ms: held, status: "pending" }]);
+};
+
 describe("a driver's integers", () => {
   test("a bigint column arrives as a number, as text or as a bigint, and decodes the same", () => {
-    const statement = outbox.claimById({ id, leaseMs: 1, now });
-    const step = statement.decode([]);
-
-    if (step.done) {
-      throw new Error("expected a follow-up statement");
-    }
-
-    const answers = [5, "5", 5n].map((held) =>
-      step.next.decode([{ due_ms: 0, held_ms: held, status: "pending" }])
-    );
+    const answers = [5, "5", 5n].map((held) => decodeHeld(held));
 
     for (const answer of answers) {
       expect(answer).toStrictEqual({
@@ -265,17 +268,8 @@ describe("a driver's integers", () => {
   });
 
   test("a count above 2^53 - 1 is a ProtocolError, as text or as a bigint, never a rounded number", () => {
-    const statement = outbox.claimById({ id, leaseMs: 1, now });
-    const step = statement.decode([]);
-
-    if (step.done) {
-      throw new Error("expected a follow-up statement");
-    }
-
     for (const held of ["9007199254740993", 9_007_199_254_740_993n]) {
-      expect(() =>
-        step.next.decode([{ due_ms: 0, held_ms: held, status: "pending" }])
-      ).toThrow(ProtocolError);
+      expect(() => decodeHeld(held)).toThrow(ProtocolError);
     }
   });
 });

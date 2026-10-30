@@ -131,23 +131,14 @@ const standaloneCalls = [
 /** The calls above return different effects: as one type they can be passed on. */
 const widen = (effect: Effect.Effect<unknown, SqlError>) => effect;
 
-/** The operation named by the defect that ended a run, or `undefined` when the run did not end in that defect. */
-const standaloneOperation = (
-  exit: Exit.Exit<unknown, unknown>
-): string | undefined => {
-  const cause = Exit.isFailure(exit) ? Cause.squash(exit.cause) : undefined;
+/** The operation named by the defect of that class that ended a run, or `undefined` when the run did not end in it. */
+const defectOperation = (
+  exit: Exit.Exit<unknown, unknown>,
+  defect: typeof NotInTransactionDefect | typeof StandaloneInTransactionDefect
+) => {
+  const end = Exit.isFailure(exit) ? Cause.squash(exit.cause) : undefined;
 
-  return Schema.is(StandaloneInTransactionDefect)(cause)
-    ? cause.operation
-    : undefined;
-};
-
-const staleOperation = (
-  exit: Exit.Exit<unknown, unknown>
-): string | undefined => {
-  const cause = Exit.isFailure(exit) ? Cause.squash(exit.cause) : undefined;
-
-  return Schema.is(NotInTransactionDefect)(cause) ? cause.operation : undefined;
+  return Schema.is(defect)(end) ? end.operation : undefined;
 };
 
 layer(tables)("the Effect adapter against PostgreSQL", (it) => {
@@ -369,7 +360,10 @@ layer(tables)("the Effect adapter against PostgreSQL", (it) => {
           Effect.provideService(hold, InTransaction, stale)
         );
 
-        assert.strictEqual(staleOperation(exit), "holdClaim");
+        assert.strictEqual(
+          defectOperation(exit, NotInTransactionDefect),
+          "holdClaim"
+        );
         assert.strictEqual(
           yield* transaction(hold.pipe(Effect.as("held"))),
           "held"
@@ -423,7 +417,10 @@ layer(tables)("the Effect adapter against PostgreSQL", (it) => {
 
           const exit = yield* Effect.exit(transaction(widen(call(outbox))));
 
-          assert.strictEqual(standaloneOperation(exit), name);
+          assert.strictEqual(
+            defectOperation(exit, StandaloneInTransactionDefect),
+            name
+          );
           yield* widen(call(outbox));
         })
       )
