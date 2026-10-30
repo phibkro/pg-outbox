@@ -44,6 +44,22 @@
         "vite-plus": "catalog:",
       },
     },
+    "packages/pg": {
+      "name": "@pg-outbox/pg",
+      "version": "0.0.0",
+      "dependencies": {
+        "@pg-outbox/core": "workspace:*",
+        "@pg-txmode/pg": "workspace:*",
+      },
+      "devDependencies": {
+        "@pg-outbox/conformance": "workspace:*",
+        "@pg-txmode/core": "workspace:*",
+        "@pg-txmode/harness": "workspace:*",
+        "@types/node": "catalog:",
+        "typescript": "catalog:",
+        "vite-plus": "catalog:",
+      },
+    },
     "tools/model": {
       "name": "@pg-outbox/model",
       "version": "0.0.0",
@@ -431,6 +447,8 @@
     "@pg-outbox/core": ["@pg-outbox/core@workspace:packages/core"],
 
     "@pg-outbox/model": ["@pg-outbox/model@workspace:tools/model"],
+
+    "@pg-outbox/pg": ["@pg-outbox/pg@workspace:packages/pg"],
 
     "@pg-outbox/quality": ["@pg-outbox/quality@workspace:tools/quality"],
 

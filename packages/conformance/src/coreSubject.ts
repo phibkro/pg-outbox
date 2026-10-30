@@ -1,102 +1,47 @@
-import type { OperationId, RawRow, Statement } from "@pg-outbox/core";
+import { execute } from "@pg-outbox/core";
+import type { RawRow, Statement } from "@pg-outbox/core";
 import type { Connect, Session } from "@pg-txmode/harness";
 
-import { parts, rewritten } from "./mutation.ts";
+import {
+  mutatedMigration,
+  mutatedTexts,
+  rewriteSent,
+  runsOnOwnConnection,
+} from "./mutated.ts";
+import type { Built } from "./mutated.ts";
 import type { Mutation } from "./mutation.ts";
 import type { StatementRecord, Subject, SuiteOutbox, Tx } from "./subject.ts";
 
-const bizTable = "CREATE TABLE biz (n int NOT NULL)";
-
-export interface CoreSubject {
-  readonly subject: Subject;
-  /** Every statement sent so far, per connection, in order. */
-  readonly log: StatementRecord[];
-  /** The text of each operation as this subject sends it (a control's rewrite applied). */
-  readonly texts: Readonly<Record<OperationId, string>>;
-  /** The statements that create the table, as this subject runs them. */
-  readonly migration: readonly string[];
-}
-
-const textsOf = (
-  outbox: SuiteOutbox,
-  mutation: Mutation | undefined
-): Readonly<Record<OperationId, string>> => {
-  const texts: Record<OperationId, string> = { ...outbox.sql };
-
-  for (const part of parts(mutation)) {
-    if (part.kind === "statement") {
-      texts[part.operation] = rewritten(
-        texts[part.operation],
-        part.rewrite,
-        `statement ${part.operation}`
-      );
-    }
-  }
-
-  return texts;
-};
-
-const migrationOf = (
-  outbox: SuiteOutbox,
-  mutation: Mutation | undefined
-): readonly string[] => {
-  let statements = outbox.migration;
-
-  for (const part of parts(mutation)) {
-    if (part.kind === "migration") {
-      statements = part.rewrite(statements);
-    }
-  }
-
-  const changed = parts(mutation).some((part) => part.kind === "migration");
-
-  if (changed && statements.join("\n") === outbox.migration.join("\n")) {
-    throw new Error("the migration rewrite changed nothing");
-  }
-
-  return statements;
-};
-
-/** What runs: an inspect-only rewrite is read by a check and never sent. */
-const sentTexts = (
-  outbox: SuiteOutbox,
-  mutation: Mutation | undefined
-): Readonly<Record<OperationId, string>> => {
-  const runnable = parts(mutation).filter(
-    (part) => !(part.kind === "statement" && part.inspectOnly === true)
-  );
-
-  return textsOf(outbox, { kind: "all", of: runnable });
-};
+export const bizTable = "CREATE TABLE biz (n int NOT NULL)";
 
 /**
  * The core's statements over harness sessions: each standalone call opens a connection of its own (a claimer is a client),
- * a transaction holds one connection from BEGIN to COMMIT, and a statement is run by the loop of `Statement` (the
- * interpreter every adapter has). `mutation` rewrites what is sent, for a negative control.
+ * a transaction holds one connection from BEGIN to COMMIT, and a statement is run by `execute`, the interpreter every
+ * adapter has. `mutation` rewrites what is sent, for a negative control.
  */
 export const coreSubject = (
   outbox: SuiteOutbox,
   connect: Connect,
   mutation?: Mutation
-): CoreSubject => {
+): Built => {
   const log: StatementRecord[] = [];
-  const texts = textsOf(outbox, mutation);
-  const sent = sentTexts(outbox, mutation);
-  const migration = migrationOf(outbox, mutation);
+  const rewrite = rewriteSent(outbox, mutation);
+  const migration = mutatedMigration(outbox, mutation);
   let opened = 0;
 
-  const open = async (): Promise<{
+  interface Held {
     readonly session: Session;
     readonly label: string;
-  }> => {
+  }
+
+  const open = async (): Promise<Held> => {
     opened += 1;
 
     return { label: `s${opened}`, session: await connect() };
   };
 
   const send = async (
-    session: Session,
-    label: string,
+    { session, label }: Held,
     text: string,
     values: readonly (string | number | boolean | null)[] = []
   ): Promise<readonly RawRow[]> => {
@@ -106,65 +51,46 @@ export const coreSubject = (
   };
 
   const withSession = async <T>(
-    use: (session: Session, label: string) => Promise<T>
+    use: (held: Held) => Promise<T>
   ): Promise<T> => {
-    const { session, label } = await open();
+    const held = await open();
 
     try {
-      return await use(session, label);
+      return await use(held);
     } finally {
-      await session.end();
+      await held.session.end();
     }
   };
 
-  const run = async <A>(
-    session: Session,
-    label: string,
-    statement: Statement<A>
-  ): Promise<A> => {
-    let step = statement.decode(
-      await send(session, label, sent[statement.operation], statement.values)
+  const run = async <A>(held: Held, statement: Statement<A>): Promise<A> =>
+    await execute(
+      async (text, values) => await send(held, rewrite(text), values),
+      statement
     );
-
-    while (!step.done) {
-      const { next } = step;
-
-      step = next.decode(
-        await send(session, label, sent[next.operation], next.values)
-      );
-    }
-
-    return step.value;
-  };
 
   /** Standalone: a connection of its own, autocommit. */
   const alone = async <A>(statement: Statement<A>): Promise<A> =>
-    await withSession(
-      async (session, label) => await run(session, label, statement)
-    );
+    await withSession(async (held) => await run(held, statement));
 
-  const txOf = (session: Session, label: string): Tx & { label: string } => ({
-    label,
-    query: async (text, values) => await send(session, label, text, values),
-  });
-
-  const sessions = new WeakMap<Tx, { session: Session; label: string }>();
+  const held = new WeakMap<Tx, Held>();
 
   const transaction = async <T>(body: (tx: Tx) => Promise<T>): Promise<T> =>
-    await withSession(async (session, label) => {
-      const tx = txOf(session, label);
+    await withSession(async (connection) => {
+      const tx: Tx = {
+        query: async (text, values) => await send(connection, text, values),
+      };
 
-      sessions.set(tx, { label, session });
-      await send(session, label, "BEGIN");
+      held.set(tx, connection);
+      await send(connection, "BEGIN");
 
       try {
         const value = await body(tx);
 
-        await send(session, label, "COMMIT");
+        await send(connection, "COMMIT");
 
         return value;
       } catch (error) {
-        await send(session, label, "ROLLBACK");
+        await send(connection, "ROLLBACK");
 
         throw error;
       }
@@ -172,70 +98,61 @@ export const coreSubject = (
 
   /** On the caller's transaction when `on` is given, else alone; a control can force the connection of its own. */
   const joining = async <A>(
-    operation: OperationId,
     statement: Statement<A>,
     on: Tx | undefined
   ): Promise<A> => {
-    const held = on === undefined ? undefined : sessions.get(on);
+    const connection = on === undefined ? undefined : held.get(on);
 
-    if (
-      held === undefined ||
-      parts(mutation).some(
-        (part) => part.kind === "ownConnection" && part.operation === operation
-      )
-    ) {
-      return await alone(statement);
-    }
-
-    return await run(held.session, held.label, statement);
+    return connection === undefined ||
+      runsOnOwnConnection(mutation, statement.operation)
+      ? await alone(statement)
+      : await run(connection, statement);
   };
 
   const inTransaction = async <A>(
     tx: Tx,
     statement: Statement<A>
   ): Promise<A> => {
-    const held = sessions.get(tx);
+    const connection = held.get(tx);
 
-    if (held === undefined) {
+    if (connection === undefined) {
       throw new Error("holdClaim needs a transaction of this subject");
     }
 
-    return await run(held.session, held.label, statement);
+    return await run(connection, statement);
   };
 
   const subject: Subject = {
-    ack: async (args, on) => await joining("ack", outbox.ack(args), on),
-    bury: async (args, on) => await joining("bury", outbox.bury(args), on),
+    ack: async (args, on) => await joining(outbox.ack(args), on),
+    bury: async (args, on) => await joining(outbox.bury(args), on),
     claimBatch: async (args) => await alone(outbox.claimBatch(args)),
     claimById: async (args) => await alone(outbox.claimById(args)),
     cleanup: async (args) => await alone(outbox.cleanup(args)),
     counts: async (args) => await alone(outbox.counts(args)),
-    enqueue: async (tx, args) =>
-      await joining("enqueue", outbox.enqueue(args), tx),
+    enqueue: async (tx, args) => await joining(outbox.enqueue(args), tx),
     holdClaim: async (tx, args) =>
       await inTransaction(tx, outbox.holdClaim(args)),
     markQueued: async (args) => await alone(outbox.markQueued(args)),
     migrate: async () => {
-      await withSession(async (session, label) => {
-        await send(session, label, `DROP TABLE IF EXISTS biz, ${outbox.table}`);
-        await send(session, label, bizTable);
+      await withSession(async (connection) => {
+        await send(connection, `DROP TABLE IF EXISTS biz, ${outbox.table}`);
+        await send(connection, bizTable);
 
         for (const statement of migration) {
-          await send(session, label, statement);
+          await send(connection, statement);
         }
       });
     },
     open: async (args) => await alone(outbox.open(args)),
     outbox,
-    release: async (args, on) =>
-      await joining("release", outbox.release(args), on),
+    release: async (args, on) => await joining(outbox.release(args), on),
     sql: async (text, values) =>
       await withSession(
-        async (session, label) => await send(session, label, text, values)
+        async (connection) => await send(connection, text, values)
       ),
     stale: async (args) => await alone(outbox.stale(args)),
     transaction,
   };
 
-  return { log, migration, subject, texts };
+  return { log, migration, subject, texts: mutatedTexts(outbox, mutation) };
 };

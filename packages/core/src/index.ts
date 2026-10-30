@@ -2,13 +2,18 @@ export { declareOutbox } from "./outbox.ts";
 
 export type { OutboxConfig, RetryPolicy } from "./outbox.ts";
 
-export type { Outbox } from "./outboxType.ts";
+export type { BuilderArgs, BuilderName, Outbox } from "./outboxType.ts";
 
 export { databaseNow, fixedNow } from "./now.ts";
 
 export type { Now } from "./now.ts";
 
-export { operationById, operationIds, operations } from "./operations.ts";
+export {
+  isOperationId,
+  operationById,
+  operationIds,
+  operations,
+} from "./operations.ts";
 
 export type {
   OperationId,
@@ -40,6 +45,10 @@ export type {
   Settled,
   Status,
 } from "./results.ts";
+
+export { execute } from "./execute.ts";
+
+export type { Query } from "./execute.ts";
 
 export { schemaVersion } from "./schema.ts";
 

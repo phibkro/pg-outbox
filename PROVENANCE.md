@@ -49,3 +49,11 @@ The development lifecycle (spec 0000) is copied from [`phibkro/pg-txmode`](https
 | `zod` 4.6.7 | MIT | decoding result rows (`@pg-outbox/core`), the shape of `model/cases.json` (`tools/model`) |
 | `pg` 8.23.1, `libpg-query` 18.2.1, `oxc-parser` 0.153.0 | MIT | through pg-txmode's harness and lint (the conformance suite); not dependencies of `@pg-outbox/core` |
 | TLA+ tools 1.7.4 (TLC 2.19), OpenJDK 8 | MIT (TLA+ tools), GPL-2.0 with the Classpath Exception (OpenJDK) | the model, from nixpkgs through `devenv.nix`; not redistributed |
+
+## Added by spec 0002
+
+| File | Source | Deviation |
+| --- | --- | --- |
+| `packages/pg/*` | none | original. It runs the statements of `@pg-outbox/core` over `@pg-txmode/pg` (pg-txmode `12f1aba`, the submodule); the shape (a client of a mode, a transaction as a parameter, no session API on a pooled mode) follows pg-txmode's `packages/pg` |
+| `vite.config.ts` | as in spec 0001 | `eslint/require-await` is off, as in pg-txmode's `vite.config.ts` (the same two rules conflict) |
+| `tools/quality/test/effectBoundary.test.ts` | as in spec 0001 | adds "an adapter adds no SQL" |

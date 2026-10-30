@@ -20,7 +20,7 @@ import type { Statement as LintStatement } from "@pg-txmode/lint";
 import { expect } from "vite-plus/test";
 
 import type { Env, Falsifier } from "./falsifier.ts";
-import { at, claimed, enqueueOne } from "./fixtures.ts";
+import { at, claimed, enqueueOne, within } from "./fixtures.ts";
 import { instantPattern, replacing } from "./mutation.ts";
 import type { Subject } from "./subject.ts";
 
@@ -75,7 +75,11 @@ const journey = async (subject: Subject): Promise<void> => {
 
   await subject.transaction(async (tx) => {
     await subject.holdClaim(tx, { id, token: second.token });
-    await subject.ack({ id, now: at(2001), token: second.token }, tx);
+    await within(
+      5000,
+      subject.ack({ id, now: at(2001), token: second.token }, tx),
+      "the journey's ack in the transaction that holds the claim"
+    );
   });
 
   const other = await enqueueOne(subject, { now: at(0) });

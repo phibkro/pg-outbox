@@ -12,6 +12,7 @@ import {
   enqueueOne,
   stateOf,
   table,
+  within,
 } from "./fixtures.ts";
 import { instantPattern, replacing } from "./mutation.ts";
 import type { Subject } from "./subject.ts";
@@ -325,7 +326,11 @@ const holdWithAck = async ({ subject }: Env): Promise<void> => {
   const waiting = await subject.transaction(async (tx) => {
     await subject.holdClaim(tx, { id, token: a.token });
     expect(
-      await subject.ack({ id, now: at(1500), token: a.token }, tx)
+      await within(
+        5000,
+        subject.ack({ id, now: at(1500), token: a.token }, tx),
+        "an ack in the transaction that holds the claim"
+      )
     ).toStrictEqual({ _tag: "Delivered" });
 
     const b = competingClaim(subject, id, 2000);

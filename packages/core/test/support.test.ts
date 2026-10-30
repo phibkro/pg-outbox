@@ -139,3 +139,13 @@ describe("the mode check", () => {
     ).toStrictEqual(["classify", "stale", "counts", "open"]);
   });
 });
+
+describe("an operation is no stronger than the operations it may run after itself", () => {
+  test("claimById can run classify, a read: the refusal says so and quotes both operations' rows", () => {
+    expect(operationSupport(direct, "claimById")).toBe("yes");
+    expect(operationSupport(hyperdrive, "claimById")).toBe("unverified");
+    expect(() => {
+      requireOperation(hyperdrive, "claimById");
+    }).toThrow(/may run classify after itself/u);
+  });
+});
