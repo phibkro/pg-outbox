@@ -48,6 +48,9 @@ jobs:
       - name: Build
         shell: bash
         run: devenv shell -- bun run build
+      - name: Stage release packages
+        shell: bash
+        run: devenv shell -- bun run release:stage
       - name: Knip
         shell: bash
         run: devenv shell -- bun run knip

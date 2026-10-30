@@ -1,12 +1,18 @@
 {
   "name": "@pg-outbox/pg",
   "version": "0.0.0",
-  "private": true,
+  "description": "The pg adapter of the pg-outbox core: one function per operation over a @pg-txmode/pg client; enqueue and holdClaim take the Transaction.",
+  "license": "Apache-2.0",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
   },
+  "publishConfig": {
+    "access": "public",
+    "directory": "dist"
+  },
   "scripts": {
+    "prepublishOnly": "echo 'publish packages/pg/dist (bun run release:stage), not the source directory' && exit 1",
     "test": "bunx vp test",
     "build": "vp pack"
   },
