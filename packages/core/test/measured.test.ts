@@ -53,6 +53,14 @@ const measured = (operation: Measurement["operation"]): Measurement => ({
   operation,
 });
 
+/** A recorded run that is good for `enqueue`: its day, caching enabled, and every falsifier of the operation passing. */
+const syntheticRun = (): string =>
+  [
+    "| Date (UTC) | 2026-10-30 |",
+    "Hyperdrive caching: enabled",
+    ...exercisedBy.enqueue.map((id) => ` ✓ the suite > ${id} holds: a title`),
+  ].join("\n");
+
 describe("a recorded run lifts an operation from unverified, and only that operation, on that mode", () => {
   test("without a run every operation is unverified on Hyperdrive", () => {
     for (const id of operationIds) {
@@ -120,11 +128,7 @@ describe("the recorded runs are backed by their evidence", () => {
   });
 
   test("control: a run with a missing or failing falsifier, or with caching off, is refused", () => {
-    const run = [
-      "| Date (UTC) | 2026-10-30 |",
-      "Hyperdrive caching: enabled",
-      ...exercisedBy.enqueue.map((id) => ` ✓ the suite > ${id} holds: a title`),
-    ].join("\n");
+    const run = syntheticRun();
 
     expect(problems(run, measured("enqueue"))).toStrictEqual([]);
     expect(
@@ -154,11 +158,7 @@ describe("a yes from a measurement says what it stands on", () => {
   });
 
   test("control: a measurement without covers, or with covers that do not say caching was enabled, or of another day, is refused", () => {
-    const run = [
-      "| Date (UTC) | 2026-10-30 |",
-      "Hyperdrive caching: enabled",
-      ...exercisedBy.enqueue.map((id) => ` ✓ the suite > ${id} holds: a title`),
-    ].join("\n");
+    const run = syntheticRun();
 
     expect(problems(run, measured("enqueue"))).toStrictEqual([]);
     expect(
