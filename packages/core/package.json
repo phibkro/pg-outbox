@@ -1,6 +1,6 @@
 {
   "name": "@pg-outbox/core",
-  "version": "0.0.0",
+  "version": "0.1.0-alpha.0",
   "description": "The claim, fence, hold, ack, release and bury protocol of a Postgres outbox as statements: no driver, no Effect, a mode check driven by pg-txmode's catalogue.",
   "license": "Apache-2.0",
   "type": "module",
